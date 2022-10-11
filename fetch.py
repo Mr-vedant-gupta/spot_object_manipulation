@@ -324,10 +324,10 @@ def main(argv):
 
                 # The axis on the gripper is the x-axis.
 		#NOTE: HAVE CHANGED AXES
-                axis_on_gripper_ewrt_gripper = geometry_pb2.Vec3(x=0, y=0, z=-1)
+                axis_on_gripper_ewrt_gripper = geometry_pb2.Vec3(x=0, y=1, z=0)
 
                 # The axis in the vision frame is the negative z-axis
-                axis_to_align_with_ewrt_vision = geometry_pb2.Vec3(x=1, y=0, z=0)
+                axis_to_align_with_ewrt_vision = geometry_pb2.Vec3(x=0, y=0, z=1)
 
                 # Add the vector constraint to our proto.
                 constraint = grasp.grasp_params.allowable_orientation.add()
