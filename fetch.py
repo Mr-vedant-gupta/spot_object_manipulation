@@ -283,22 +283,22 @@ def main(argv):
 
 
                 # Walk to the object.
-                #walk_rt_vision, heading_rt_vision = compute_stand_location_and_yaw(
-                #    vision_tform_dogtoy, robot_state_client, distance_margin=1.0)
+                walk_rt_vision, heading_rt_vision = compute_stand_location_and_yaw(
+                    vision_tform_dogtoy, robot_state_client, distance_margin=1.0)
 
-                #move_cmd = RobotCommandBuilder.trajectory_command(
-                #    goal_x=walk_rt_vision[0],
-                #    goal_y=walk_rt_vision[1],
-                #    goal_heading=heading_rt_vision,
-                #    frame_name=frame_helpers.VISION_FRAME_NAME,
-                #    params=get_walking_params(0.5, 0.5))
-                #end_time = 5.0
-                #cmd_id = command_client.robot_command(command=move_cmd,
-                #                                      end_time_secs=time.time() +
-                #                                      end_time)
+                move_cmd = RobotCommandBuilder.trajectory_command(
+                    goal_x=walk_rt_vision[0],
+                    goal_y=walk_rt_vision[1],
+                    goal_heading=heading_rt_vision,
+                    frame_name=frame_helpers.VISION_FRAME_NAME,
+                    params=get_walking_params(0.5, 0.5))
+                end_time = 5.0
+                cmd_id = command_client.robot_command(command=move_cmd,
+                                                      end_time_secs=time.time() +
+                                                      end_time)
 
                 # Wait until the robot reports that it is at the goal.
-                #block_for_trajectory_cmd(command_client, cmd_id, timeout_sec=5, verbose=True)
+                block_for_trajectory_cmd(command_client, cmd_id, timeout_sec=5, verbose=True)
 
                 # The ML result is a bounding box.  Find the center.
                 (center_px_x,
