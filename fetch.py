@@ -28,7 +28,7 @@ from bosdyn.client import math_helpers
 
 from constrained_manipulation_helper import *
 
-VELOCITY = -0.5
+VELOCITY = 0.5
 FORCE_LIMIT = 50
 
 kImageSources = [
@@ -389,11 +389,15 @@ def main(argv):
 
             holding_toy = not failed
 
+            if not holding_toy:
+                print("Didnt find toy")
+                continue
+
             # Move the arm to a carry position.
             print('Grasp finished, search for a person...')
         
             #carry_cmd = RobotCommandBuilder.arm_carry_command()
-            command = construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
+            command = construct_drawer_task(-VELOCITY, force_limit=FORCE_LIMIT)
             # command_client.robot_command(command)
             command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
                 robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
@@ -401,7 +405,16 @@ def main(argv):
 
             # Wait for the carry command to finish
             print("Finished pulling")
-            time.sleep(10)
+            time.sleep(2)
+
+            command = construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
+            # command_client.robot_command(command)
+            command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
+                robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
+            command_client.robot_command_async(command)
+
+            print("Finished pushing")
+            time.sleep(2)
 
             # person = None
             # while person is None:
