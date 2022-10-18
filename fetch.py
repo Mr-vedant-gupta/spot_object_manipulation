@@ -49,16 +49,12 @@ def main(argv):
     parser.add_argument(
         '-l',
         '--label',
-        help='name of label we want Spot to manipulate, should be one of handle, ...')
+        help='name of label we want Spot to manipulate, should be one of handle, ...',
+        required=True)
     parser.add_argument('-c',
                         '--confidence-dogtoy',
                         help='Minimum confidence to return an object for the dogoy (0.0 to 1.0)',
                         default=0.5,
-                        type=float)
-    parser.add_argument('-e',
-                        '--confidence-person',
-                        help='Minimum confidence for person detection (0.0 to 1.0)',
-                        default=0.6,
                         type=float)
     options = parser.parse_args(argv)
 
@@ -149,7 +145,6 @@ def main(argv):
             # negative-z direction in the vision frame.
 
             # The axis on the gripper is the x-axis.
-    #NOTE: HAVE CHANGED AXES
             
             axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = grasp_directions(options.label)
 
@@ -183,6 +178,7 @@ def main(argv):
             failed = False
             time_start = time.time()
             while not grasp_done:
+                print("hello")
                 feedback_request = manipulation_api_pb2.ManipulationApiFeedbackRequest(
                     manipulation_cmd_id=cmd_response.manipulation_cmd_id)
 
@@ -192,6 +188,9 @@ def main(argv):
 
                 current_state = response.current_state
                 current_time = time.time() - time_start
+                if current_time > 20:
+                    failed = False
+                    break
                 print('Current state ({time:.1f} sec): {state}'.format(
                     time=current_time,
                     state=manipulation_api_pb2.ManipulationFeedbackState.Name(
@@ -210,7 +209,7 @@ def main(argv):
                 time.sleep(0.1)
 
             grasp_completed = not failed
-
+            print(grasp_completed)
             if not grasp_completed:
                 print("Didnt find object")
                 continue
@@ -238,5 +237,8 @@ def main(argv):
             print("Finished action 2")
             time.sleep(2)
 
+if __name__ == '__main__':
+    if not main(sys.argv[1:]):
+        sys.exit(1)
 
 

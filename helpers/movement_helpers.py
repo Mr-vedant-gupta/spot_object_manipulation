@@ -81,6 +81,3 @@ def get_walking_params(max_linear_vel, max_rotation_vel):
     params.vel_limit.CopyFrom(vel_limit)
     return params
 
-if __name__ == '__main__':
-    if not main(sys.argv[1:]):
-        sys.exit(1)
