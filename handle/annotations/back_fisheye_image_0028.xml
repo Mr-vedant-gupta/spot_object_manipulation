@@ -1,7 +1,7 @@
 <annotation>
 	<folder>images</folder>
 	<filename>back_fisheye_image_0028.jpg</filename>
-	<path>/home/vedantgupta/drawer/handle/images/back_fisheye_image_0028.jpg</path>
+	<path>/home/sergio/classes/Lab/spot_object_manipulation/handle/images/back_fisheye_image_0028.jpg</path>
 	<source>
 		<database>Unknown</database>
 	</source>
@@ -12,27 +12,15 @@
 	</size>
 	<segmented>0</segmented>
 	<object>
-		<name>handle</name>
+		<name>drawer</name>
 		<pose>Unspecified</pose>
 		<truncated>0</truncated>
 		<difficult>0</difficult>
 		<bndbox>
-			<xmin>26</xmin>
-			<ymin>125</ymin>
-			<xmax>30</xmax>
-			<ymax>126</ymax>
-		</bndbox>
-	</object>
-	<object>
-		<name>handle</name>
-		<pose>Unspecified</pose>
-		<truncated>0</truncated>
-		<difficult>0</difficult>
-		<bndbox>
-			<xmin>29</xmin>
-			<ymin>123</ymin>
-			<xmax>73</xmax>
-			<ymax>155</ymax>
+			<xmin>256</xmin>
+			<ymin>129</ymin>
+			<xmax>292</xmax>
+			<ymax>164</ymax>
 		</bndbox>
 	</object>
 </annotation>
