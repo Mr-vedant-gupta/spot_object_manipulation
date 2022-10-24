@@ -77,6 +77,13 @@ def get_obj_and_img(network_compute_client, server, model, confidence,
                         obj.transforms_snapshot,
                         frame_helpers.VISION_FRAME_NAME,
                         obj.image_properties.frame_name_image_coordinates)
+                    print("HERE")
+                    print(obj.image_properties.frame_name_image_coordinates)
+                    print(frame_helpers.get_a_tform_b(
+                        obj.transforms_snapshot,
+                        frame_helpers.RAYCAST_FRAME_NAME,
+                        obj.image_properties.frame_name_image_coordinates))
+                        
                 except bosdyn.client.frame_helpers.ValidateFrameTreeError:
                     # No depth data available.
                     vision_tform_obj = None

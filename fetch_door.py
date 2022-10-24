@@ -90,17 +90,15 @@ def main(argv):
          grasp_completed = False
          while not grasp_completed:
             # Capture an image and run ML on it.
-            print(1)
             dogtoy, image, vision_tform_dogtoy = get_obj_and_img(
                 network_compute_client, options.ml_service, options.model,
                 options.confidence_dogtoy, kImageSources, options.label)
-            print(2)
             if dogtoy is None:
                 # Didn't find anything, keep searching.
                 continue
 
             # Detected Object. Request pick up.
-            print(3)
+
             # Stow the arm in case it is deployed
             stow_cmd = RobotCommandBuilder.arm_stow_command()
             command_client.robot_command(stow_cmd)
@@ -127,6 +125,48 @@ def main(argv):
             # The ML result is a bounding box.  Find the center.
             (center_px_x,
              center_px_y) = find_center_px(dogtoy.image_properties.coordinates)
+
+            ###################
+
+            auto_cmd = door_pb2.DoorCommand.AutoGraspCommand()
+            auto_cmd.frame_name = frame_helpers.VISION_FRAME_NAME
+            search_dist_meters = 0.25
+            search_ray = search_dist_meters * ray_from_camera_normalized
+            search_ray_start_in_frame = raycast_point_wrt_vision - search_ray
+            auto_cmd.search_ray_start_in_frame.CopyFrom(
+                geometry_pb2.Vec3(x=search_ray_start_in_frame[0], y=search_ray_start_in_frame[1],
+                                z=search_ray_start_in_frame[2]))
+
+            search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
+            auto_cmd.search_ray_end_in_frame.CopyFrom(
+                geometry_pb2.Vec3(x=search_ray_end_in_frame[0], y=search_ray_end_in_frame[1],
+                                z=search_ray_end_in_frame[2]))
+            auto_cmd.hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
+            auto_cmd.swing_direction = door_pb2.DoorCommand.SWING_DIRECTION_UNKNOWN
+
+            door_command = door_pb2.DoorCommand.Request(auto_grasp_command=auto_cmd)
+            request = door_pb2.OpenDoorCommandRequest(door_command=door_command)
+
+            # Command the robot to open the door.
+            door_client = robot.ensure_client(DoorClient.default_service_name)
+            response = door_client.open_door(request)
+
+            feedback_request = door_pb2.OpenDoorFeedbackRequest()
+            feedback_request.door_command_id = response.door_command_id
+
+            timeout_sec = 60.0
+            end_time = time.time() + timeout_sec
+            while time.time() < end_time:
+                feedback_response = door_client.open_door_feedback(feedback_request)
+                if (feedback_response.status !=
+                        basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
+                    raise Exception("Door command reported status ")
+                if (feedback_response.feedback.status == door_pb2.DoorCommand.Feedback.STATUS_COMPLETED):
+                    robot.logger.info("Opened door.")
+                    return
+                time.sleep(0.5)
+    raise Exception("Door command timed out. Try repositioning the robot.")
+            ##################
 
             # Request Pick Up on that pixel.
             pick_vec = geometry_pb2.Vec2(x=center_px_x, y=center_px_y)
