@@ -1,6 +1,6 @@
 item {
     id: 1
-    name: 'drawer'
+    name: 'handle'
 }
 item {
     id: 2

@@ -108,7 +108,7 @@ def main(argv):
 
             # Walk to the object.
             walk_rt_vision, heading_rt_vision = compute_stand_location_and_yaw(
-                vision_tform_dogtoy, robot_state_client, distance_margin=1.0)
+                vision_tform_dogtoy, robot_state_client, distance_margin=1.5)
 
             move_cmd = RobotCommandBuilder.trajectory_command(
                 goal_x=walk_rt_vision[0],
@@ -190,9 +190,9 @@ def main(argv):
 
                 current_state = response.current_state
                 current_time = time.time() - time_start
-                if current_time > 20:
-                    failed = False
-                    break
+                # if current_time > 20:
+                #     failed = False
+                #     break
                 print('Current state ({time:.1f} sec): {state}'.format(
                     time=current_time,
                     state=manipulation_api_pb2.ManipulationFeedbackState.Name(
