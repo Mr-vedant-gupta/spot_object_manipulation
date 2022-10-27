@@ -126,47 +126,47 @@ def main(argv):
             (center_px_x,
              center_px_y) = find_center_px(dogtoy.image_properties.coordinates)
 
-            ###################
-
-            auto_cmd = door_pb2.DoorCommand.AutoGraspCommand()
-            auto_cmd.frame_name = frame_helpers.VISION_FRAME_NAME
-            search_dist_meters = 0.25
-            search_ray = search_dist_meters * ray_from_camera_normalized
-            search_ray_start_in_frame = raycast_point_wrt_vision - search_ray
-            auto_cmd.search_ray_start_in_frame.CopyFrom(
-                geometry_pb2.Vec3(x=search_ray_start_in_frame[0], y=search_ray_start_in_frame[1],
-                                z=search_ray_start_in_frame[2]))
-
-            search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
-            auto_cmd.search_ray_end_in_frame.CopyFrom(
-                geometry_pb2.Vec3(x=search_ray_end_in_frame[0], y=search_ray_end_in_frame[1],
-                                z=search_ray_end_in_frame[2]))
-            auto_cmd.hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
-            auto_cmd.swing_direction = door_pb2.DoorCommand.SWING_DIRECTION_UNKNOWN
-
-            door_command = door_pb2.DoorCommand.Request(auto_grasp_command=auto_cmd)
-            request = door_pb2.OpenDoorCommandRequest(door_command=door_command)
-
-            # Command the robot to open the door.
-            door_client = robot.ensure_client(DoorClient.default_service_name)
-            response = door_client.open_door(request)
-
-            feedback_request = door_pb2.OpenDoorFeedbackRequest()
-            feedback_request.door_command_id = response.door_command_id
-
-            timeout_sec = 60.0
-            end_time = time.time() + timeout_sec
-            while time.time() < end_time:
-                feedback_response = door_client.open_door_feedback(feedback_request)
-                if (feedback_response.status !=
-                        basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
-                    raise Exception("Door command reported status ")
-                if (feedback_response.feedback.status == door_pb2.DoorCommand.Feedback.STATUS_COMPLETED):
-                    robot.logger.info("Opened door.")
-                    return
-                time.sleep(0.5)
-    raise Exception("Door command timed out. Try repositioning the robot.")
-            ##################
+#            ###################
+#
+#            auto_cmd = door_pb2.DoorCommand.AutoGraspCommand()
+#            auto_cmd.frame_name = frame_helpers.VISION_FRAME_NAME
+#            search_dist_meters = 0.25
+#            search_ray = search_dist_meters * ray_from_camera_normalized
+#            search_ray_start_in_frame = raycast_point_wrt_vision - search_ray
+#            auto_cmd.search_ray_start_in_frame.CopyFrom(
+#                geometry_pb2.Vec3(x=search_ray_start_in_frame[0], y=search_ray_start_in_frame[1],
+#                                z=search_ray_start_in_frame[2]))
+#
+#            search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
+#            auto_cmd.search_ray_end_in_frame.CopyFrom(
+#                geometry_pb2.Vec3(x=search_ray_end_in_frame[0], y=search_ray_end_in_frame[1],
+#                                z=search_ray_end_in_frame[2]))
+#            auto_cmd.hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
+#            auto_cmd.swing_direction = door_pb2.DoorCommand.SWING_DIRECTION_UNKNOWN
+#
+#            door_command = door_pb2.DoorCommand.Request(auto_grasp_command=auto_cmd)
+#            request = door_pb2.OpenDoorCommandRequest(door_command=door_command)
+#
+#            # Command the robot to open the door.
+#            door_client = robot.ensure_client(DoorClient.default_service_name)
+#            response = door_client.open_door(request)
+#
+#            feedback_request = door_pb2.OpenDoorFeedbackRequest()
+#            feedback_request.door_command_id = response.door_command_id
+#
+#            timeout_sec = 60.0
+#            end_time = time.time() + timeout_sec
+#            while time.time() < end_time:
+#                feedback_response = door_client.open_door_feedback(feedback_request)
+#                if (feedback_response.status !=
+#                        basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
+#                    raise Exception("Door command reported status ")
+#                if (feedback_response.feedback.status == door_pb2.DoorCommand.Feedback.STATUS_COMPLETED):
+#                    robot.logger.info("Opened door.")
+#                    return
+#                time.sleep(0.5)
+#    raise Exception("Door command timed out. Try repositioning the robot.")
+#            ##################
 
             # Request Pick Up on that pixel.
             pick_vec = geometry_pb2.Vec2(x=center_px_x, y=center_px_y)
@@ -188,7 +188,7 @@ def main(argv):
 
             # The axis on the gripper is the x-axis.
             
-            axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = grasp_directions(options.label)
+            axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = geometry_pb2.Vec3(x=0, y=0, z=1), geometry_pb2.Vec3(x=0, y=0, z=1)
 
             # The axis in the vision frame is the negative z-axis
             
@@ -250,35 +250,53 @@ def main(argv):
 
                 time.sleep(0.1)
 
-            grasp_completed = not failed
-            print(grasp_completed)
-            if not grasp_completed:
-                print("Didnt find object")
-                continue
+            open(robot, )
 
-            # Move the arm to a carry position.
-            print('Grasp finished, search for a person...')
-        
-            #carry_cmd = RobotCommandBuilder.arm_carry_command()
-            command = construct_drawer_task(-VELOCITY, force_limit=FORCE_LIMIT)
-            # command_client.robot_command(command)
-            command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
-                robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
-            command_client.robot_command_async(command)
+def open_door(robot, request_manager, snapshot):
+    """Command the robot to automatically open a door via the door service API.
+    Args:
+        robot: (Robot) Interface to Spot robot.
+        request_manager: (RequestManager) Object for bookkeeping user touch points.
+        snapshot: (TransformSnapshot) Snapshot from the WalkToObjectInImage command which contains
+            the 3D location reported from a raycast based on the user hinge touch point.
+    """
 
-            # Wait for the carry command to finish
-            print("Finished action 1")
-            time.sleep(2)
+    robot.logger.info("Opening door...")
 
-            command = construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
-            # command_client.robot_command(command)
-            command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
-                robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
-            command_client.robot_command_async(command)
+    auto_cmd = door_pb2.DoorCommand.AutoGraspCommand()
+    auto_cmd.frame_name = frame_helpers.VISION_FRAME_NAME
+    auto_cmd.search_ray_start_in_frame.CopyFrom(
+        geometry_pb2.Vec3(0, 0, 0))
 
-            print("Finished action 2")
-            time.sleep(2)
+    search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
+    auto_cmd.search_ray_end_in_frame.CopyFrom(
+        geometry_pb2.Vec3(0, 0, 0))
 
+    auto_cmd.hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
+    auto_cmd.swing_direction = door_pb2.DoorCommand.SWING_DIRECTION_UNKNOWN
+
+    door_command = door_pb2.DoorCommand.Request(auto_grasp_command=auto_cmd)
+    request = door_pb2.OpenDoorCommandRequest(door_command=door_command)
+
+    # Command the robot to open the door.
+    door_client = robot.ensure_client(DoorClient.default_service_name)
+    response = door_client.open_door(request)
+
+    feedback_request = door_pb2.OpenDoorFeedbackRequest()
+    feedback_request.door_command_id = response.door_command_id
+
+    timeout_sec = 60.0
+    end_time = time.time() + timeout_sec
+    while time.time() < end_time:
+        feedback_response = door_client.open_door_feedback(feedback_request)
+        if (feedback_response.status !=
+                basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
+            raise Exception("Door command reported status ")
+        if (feedback_response.feedback.status == door_pb2.DoorCommand.Feedback.STATUS_COMPLETED):
+            robot.logger.info("Opened door.")
+            return
+        time.sleep(0.5)
+    raise Exception("Door command timed out. Try repositioning the robot.")
 if __name__ == '__main__':
     if not main(sys.argv[1:]):
         sys.exit(1)
