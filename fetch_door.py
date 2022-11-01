@@ -33,6 +33,28 @@ from helpers.constants import *
 from helpers.movement_helpers import *
 from helpers.object_specific_helpers import *
 
+
+import argparse
+import math
+import sys
+import time
+
+import cv2
+import numpy as np
+
+from bosdyn import geometry
+from bosdyn.api import basic_command_pb2, geometry_pb2, manipulation_api_pb2
+from bosdyn.api.manipulation_api_pb2 import (ManipulationApiFeedbackRequest, ManipulationApiRequest,
+                                             WalkToObjectInImage)
+from bosdyn.api.spot import door_pb2
+from bosdyn.client import create_standard_sdk, frame_helpers
+from bosdyn.client.door import DoorClient
+from bosdyn.client.image import ImageClient
+from bosdyn.client.lease import LeaseClient, LeaseKeepAlive
+from bosdyn.client.manipulation_api_client import ManipulationApiClient
+from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient, blocking_stand
+from bosdyn.client.util import add_base_arguments, authenticate, setup_logging
+
 def main(argv):
     #create parser
     parser = argparse.ArgumentParser()
@@ -89,6 +111,7 @@ def main(argv):
         # while True:
          grasp_completed = False
          while not grasp_completed:
+            print(options.label)
             # Capture an image and run ML on it.
             dogtoy, image, vision_tform_dogtoy = get_obj_and_img(
                 network_compute_client, options.ml_service, options.model,
@@ -250,9 +273,11 @@ def main(argv):
 
                 time.sleep(0.1)
 
-            open(robot, )
+            print("Running Code")
+            open_door(robot)
+            print("Finished Running")
 
-def open_door(robot, request_manager, snapshot):
+def open_door(robot):
     """Command the robot to automatically open a door via the door service API.
     Args:
         robot: (Robot) Interface to Spot robot.
@@ -266,11 +291,10 @@ def open_door(robot, request_manager, snapshot):
     auto_cmd = door_pb2.DoorCommand.AutoGraspCommand()
     auto_cmd.frame_name = frame_helpers.VISION_FRAME_NAME
     auto_cmd.search_ray_start_in_frame.CopyFrom(
-        geometry_pb2.Vec3(0, 0, 0))
+        geometry_pb2.Vec3(x=0, y=0, z=0))
 
-    search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
     auto_cmd.search_ray_end_in_frame.CopyFrom(
-        geometry_pb2.Vec3(0, 0, 0))
+        geometry_pb2.Vec3(x=0, y=0, z=0))
 
     auto_cmd.hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
     auto_cmd.swing_direction = door_pb2.DoorCommand.SWING_DIRECTION_UNKNOWN
@@ -289,9 +313,11 @@ def open_door(robot, request_manager, snapshot):
     end_time = time.time() + timeout_sec
     while time.time() < end_time:
         feedback_response = door_client.open_door_feedback(feedback_request)
-        if (feedback_response.status !=
-                basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
-            raise Exception("Door command reported status ")
+        print(feedback_response.status)
+        print(basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING)
+        #if (feedback_response.status !=
+        #        basic_command_pb2.RobotCommandFeedbackStatus.STATUS_PROCESSING):
+        #    raise Exception("Door command reported status ")
         if (feedback_response.feedback.status == door_pb2.DoorCommand.Feedback.STATUS_COMPLETED):
             robot.logger.info("Opened door.")
             return
