@@ -94,9 +94,9 @@ def get_obj_and_img(network_compute_client, server, model, confidence,
                     best_vision_tform_obj = vision_tform_obj
 
         if best_obj is not None:
-            return best_obj, image_full, best_vision_tform_obj
+            return best_obj, image_full, best_vision_tform_obj, source
 
-    return None, None, None
+    return None, None, None, None
 
 def get_bounding_box_image(response):
     dtype = np.uint8
