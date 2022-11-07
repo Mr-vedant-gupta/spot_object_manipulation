@@ -117,6 +117,7 @@ def walk_to_object_in_image(robot, request_manager):
     Returns:
         ManipulationApiResponse: Feedback from WalkToObjectInImage request.
     """
+    print("checkpoint 1")
     manip_client = robot.ensure_client(ManipulationApiClient.default_service_name)
     manipulation_api_request = request_manager.get_walk_to_object_in_image_request()
 
@@ -131,13 +132,16 @@ def walk_to_object_in_image(robot, request_manager):
     feedback_request = ManipulationApiFeedbackRequest(manipulation_cmd_id=command_id)
     timeout_sec = 15.0
     end_time = time.time() + timeout_sec
+    print("checkpoint 2")
     while time.time() < end_time:
         response = manip_client.manipulation_api_feedback_command(feedback_request)
         assert response.manipulation_cmd_id == command_id, "Got feedback for wrong command."
         if (response.current_state == manipulation_api_pb2.MANIP_STATE_DONE):
+            print("checkpoint 3.1")
             return response
     raise Exception("Manip command timed out. Try repositioning the robot.")
     robot.logger.info("Walked to door.")
+    print("checkpoint 3.2")
     return response
 
 
@@ -181,7 +185,7 @@ class RequestManager:
         self.clicked_source = source
         self.image_x = x
         self.image_y = y 
-        self.image
+        self.image = image
 
     @property
     def side_by_side(self):
@@ -246,10 +250,10 @@ class RequestManager:
         #     rotated_pixel = self.handle_position_side_by_side
 
         # Undo pixel rotation by rotation 90 deg CCW.
-        self.clicked_soource = #initialize!
+        #self.clicked_soource = #initialize!
         manipulation_cmd = WalkToObjectInImage()
-        manipulation_cmd.pixel_xy.x = # initialize to center_x
-        manipulation_cmd.pixel_xy.y = #initailize to center_y
+        manipulation_cmd.pixel_xy.x = self.image_x
+        manipulation_cmd.pixel_xy.y = self.image_y
 
         # Optionally show debug image.
         # if debug:
@@ -294,13 +298,13 @@ class RequestManager:
         Returns:
             DoorCommand.HingeSide
         """
-        handle_x = self.handle_position_side_by_side[0]
-        hinge_x = self.hinge_position_side_by_side[0]
-        if handle_x < hinge_x:
-            hinge_side = door_pb2.DoorCommand.HINGE_SIDE_RIGHT
-        else:
-            hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
-        return hinge_side
+        # handle_x = self.handle_position_side_by_side[0]
+        # hinge_x = self.hinge_position_side_by_side[0]
+        # if handle_x < hinge_x:
+        #     hinge_side = door_pb2.DoorCommand.HINGE_SIDE_RIGHT
+        # else:
+        #     hinge_side = door_pb2.DoorCommand.HINGE_SIDE_LEFT
+        return door_pb2.DoorCommand.HINGE_SIDE_LEFT
 
 
 def _draw_text_on_image(image, text):
@@ -350,7 +354,7 @@ def open_door(robot, request_manager, snapshot):
     auto_cmd.search_ray_start_in_frame.CopyFrom(
         geometry_pb2.Vec3(x=search_ray_start_in_frame[0], y=search_ray_start_in_frame[1],
                           z=search_ray_start_in_frame[2]))
-
+    print("search")
     search_ray_end_in_frame = raycast_point_wrt_vision + search_ray
     auto_cmd.search_ray_end_in_frame.CopyFrom(
         geometry_pb2.Vec3(x=search_ray_end_in_frame[0], y=search_ray_end_in_frame[1],
