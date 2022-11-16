@@ -18,6 +18,8 @@ from bosdyn.api import geometry_pb2
 from bosdyn.client.lease import LeaseClient, LeaseKeepAlive
 from bosdyn.api import image_pb2
 from bosdyn.client.network_compute_bridge_client import NetworkComputeBridgeClient
+from bosdyn.client.graph_nav import GraphNavClient
+
 from bosdyn.api import network_compute_bridge_pb2
 from google.protobuf import wrappers_pb2
 from bosdyn.client.manipulation_api_client import ManipulationApiClient
@@ -68,7 +70,7 @@ def main(argv):
 
     # Time sync is necessary so that time-based filter requests can be converted
     robot.time_sync.wait_for_sync()
-
+    graph_nav_client = robot.ensure_client(GraphNavClient.default_service_name)
     network_compute_client = robot.ensure_client(
         NetworkComputeBridgeClient.default_service_name)
     robot_state_client = robot.ensure_client(
@@ -92,7 +94,7 @@ def main(argv):
             # Capture an image and run ML on it.
             print(1)
             dogtoy, image, vision_tform_dogtoy, dummy = get_obj_and_img(
-                network_compute_client, options.ml_service, options.model,
+                graph_nav_client, network_compute_client, options.ml_service, options.model,
                 options.confidence_dogtoy, kImageSources, options.label)
             print(2)
             if dogtoy is None:

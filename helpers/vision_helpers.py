@@ -95,10 +95,12 @@ def get_obj_and_img(graph_nav_client, network_compute_client, server, model, con
                     #    exit(-1)
 
 
+
                     print("LOCALIZATION")
                     print(localization_state.localization)
                     #print("obj.transforms_snapshot: ", obj.transforms_snapshot, vision_tform_obj)
                     print("vision_tform_obj: ", vision_tform_obj)
+                    print("full transforms snapshot: ", obj.transforms_snapshot)
 
 
                 except bosdyn.client.frame_helpers.ValidateFrameTreeError:
