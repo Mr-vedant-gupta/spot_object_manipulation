@@ -91,7 +91,7 @@ def main(argv):
          while not grasp_completed:
             # Capture an image and run ML on it.
             print(1)
-            dogtoy, image, vision_tform_dogtoy = get_obj_and_img(
+            dogtoy, image, vision_tform_dogtoy, dummy = get_obj_and_img(
                 network_compute_client, options.ml_service, options.model,
                 options.confidence_dogtoy, kImageSources, options.label)
             print(2)

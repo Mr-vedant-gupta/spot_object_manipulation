@@ -6,6 +6,7 @@ import cv2
 import math
 import bosdyn.client
 import bosdyn.client.util
+import graph_nav_util
 from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client.robot_command import RobotCommandClient, RobotCommandBuilder, block_until_arm_arrives
 from bosdyn.api import geometry_pb2
@@ -21,9 +22,8 @@ from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 
 
-def get_obj_and_img(network_compute_client, server, model, confidence,
+def get_obj_and_img(graph_nav_client, network_compute_client, server, model, confidence,
                     image_sources, label):
-
     for source in image_sources:
         # Build a network compute request for this image source.
         image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
@@ -77,13 +77,30 @@ def get_obj_and_img(network_compute_client, server, model, confidence,
                         obj.transforms_snapshot,
                         frame_helpers.VISION_FRAME_NAME,
                         obj.image_properties.frame_name_image_coordinates)
-                    print("HERE")
-                    print(obj.image_properties.frame_name_image_coordinates)
-                    print(frame_helpers.get_a_tform_b(
-                        obj.transforms_snapshot,
-                        frame_helpers.RAYCAST_FRAME_NAME,
-                        obj.image_properties.frame_name_image_coordinates))
-                        
+
+                    #graph = graph_nav_client.download_graph()
+
+                    #print("GRAPH")
+                    #print(graph)
+
+                    localization_state = graph_nav_client.get_localization_state()
+
+                    #current_annotation_name_to_wp_id, _ = graph_nav_util.update_waypoints_and_edges(graph,localization_state.localization.waypoint_id)
+                    #waypoint = graph_nav_util.find_unique_waypoint_id(localization_state.localization.waypoint_id,graph,current_annotation_name_to_wp_id)
+
+                    #print("WAYPOINT")
+                    #print(waypoint)
+                    #if graph is None:
+                    #    print("Empty graph")
+                    #    exit(-1)
+
+
+                    print("LOCALIZATION")
+                    print(localization_state.localization)
+                    #print("obj.transforms_snapshot: ", obj.transforms_snapshot, vision_tform_obj)
+                    print("vision_tform_obj: ", vision_tform_obj)
+
+
                 except bosdyn.client.frame_helpers.ValidateFrameTreeError:
                     # No depth data available.
                     vision_tform_obj = None
@@ -97,6 +114,7 @@ def get_obj_and_img(network_compute_client, server, model, confidence,
             return best_obj, image_full, best_vision_tform_obj, source
 
     return None, None, None, None
+
 
 def get_bounding_box_image(response):
     dtype = np.uint8
@@ -133,6 +151,7 @@ def get_bounding_box_image(response):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     return img
+
 
 def find_center_px(polygon):
     min_x = math.inf
