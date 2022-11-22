@@ -113,11 +113,11 @@ def main(argv):
         # while True:
          grasp_completed = False
          while not grasp_completed:
-            print(options.label)
+            #print(options.label)
             # Capture an image and run ML on it.
             dogtoy, image, vision_tform_dogtoy, source = get_obj_and_img(
                 graph_nav_client, network_compute_client, options.ml_service, options.model,
-                options.confidence_dogtoy, kImageSources, options.label)
+                options.confidence_dogtoy, kImageSources, options.label, robot)
             if dogtoy is None:
                 # Didn't find anything, keep searching.
                 continue

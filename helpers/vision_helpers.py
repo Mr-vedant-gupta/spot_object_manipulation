@@ -23,7 +23,7 @@ from bosdyn.client import math_helpers
 
 
 def get_obj_and_img(graph_nav_client, network_compute_client, server, model, confidence,
-                    image_sources, label):
+                    image_sources, label, robot):
     for source in image_sources:
         # Build a network compute request for this image source.
         image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
@@ -82,8 +82,16 @@ def get_obj_and_img(graph_nav_client, network_compute_client, server, model, con
 
                     #print("GRAPH")
                     #print(graph)
-
+                    body_tform_vision = bosdyn.client.frame_helpers.get_vision_tform_body(robot.get_frame_tree_snapshot())
+                    body_tform_vision = body_tform_vision.inverse()
+                    #print("body vision: ", body_tform_vision)
                     localization_state = graph_nav_client.get_localization_state()
+                    seed_tform_body = localization_state.localization.seed_tform_body
+                    if vision_tform_obj is not None:
+                        seed_tform_obj = seed_tform_body * body_tform_vision * vision_tform_obj
+                        print("seed tfrom obj: ", seed_tform_obj)
+
+                    
 
                     #current_annotation_name_to_wp_id, _ = graph_nav_util.update_waypoints_and_edges(graph,localization_state.localization.waypoint_id)
                     #waypoint = graph_nav_util.find_unique_waypoint_id(localization_state.localization.waypoint_id,graph,current_annotation_name_to_wp_id)
@@ -96,11 +104,12 @@ def get_obj_and_img(graph_nav_client, network_compute_client, server, model, con
 
 
 
-                    print("LOCALIZATION")
-                    print(localization_state.localization)
-                    #print("obj.transforms_snapshot: ", obj.transforms_snapshot, vision_tform_obj)
-                    print("vision_tform_obj: ", vision_tform_obj)
-                    print("full transforms snapshot: ", obj.transforms_snapshot)
+                    # print("LOCALIZATION")
+                    # print(localization_state.localization)
+                    #
+                    # #print("obj.transforms_snapshot: ", obj.transforms_snapshot, vision_tform_obj)
+                    # print("vision_tform_obj: ", vision_tform_obj)
+                    #print("full transforms snapshot: ", obj.transforms_snapshot)
 
 
                 except bosdyn.client.frame_helpers.ValidateFrameTreeError:
