@@ -82,12 +82,23 @@ def get_obj_and_img(graph_nav_client, network_compute_client, server, model, con
 
                     #print("GRAPH")
                     #print(graph)
-                    body_tform_vision = bosdyn.client.frame_helpers.get_vision_tform_body(robot.get_frame_tree_snapshot())
-                    body_tform_vision = body_tform_vision.inverse()
+                    vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(robot.get_frame_tree_snapshot())
+                    body_tform_vision = vision_tform_body.inverse()
                     #print("body vision: ", body_tform_vision)
                     localization_state = graph_nav_client.get_localization_state()
                     seed_tform_body = localization_state.localization.seed_tform_body
+                    # need to convert from geometry_pb2.SE3Pose to math_helpers.SE3Pose
+                    seed_tform_body =  math_helpers.SE3Pose(seed_tform_body.position.x,seed_tform_body.position.y,seed_tform_body.position.z, seed_tform_body.rotation)
+                    if seed_tform_body == None:
+                        print("Forgot to upload map")
                     if vision_tform_obj is not None:
+                        print("seed_tform_body")
+                        print(type(seed_tform_body))
+                        print("body_tform_vision")
+                        print(type(body_tform_vision))
+                        print("vision_tform_obj")
+                        print(type(vision_tform_obj))
+
                         seed_tform_obj = seed_tform_body * body_tform_vision * vision_tform_obj
                         print("seed tfrom obj: ", seed_tform_obj)
 
