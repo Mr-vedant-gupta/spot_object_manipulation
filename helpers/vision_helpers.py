@@ -91,7 +91,7 @@ def get_obj_and_img(graph_nav_client, network_compute_client, server, model, con
                     seed_tform_body =  math_helpers.SE3Pose(seed_tform_body.position.x,seed_tform_body.position.y,seed_tform_body.position.z, seed_tform_body.rotation)
                     if seed_tform_body == None:
                         print("Forgot to upload map")
-                    if vision_tform_obj is not None:
+                    elif vision_tform_obj is not None:
                         print("seed_tform_body")
                         print(type(seed_tform_body))
                         print("body_tform_vision")

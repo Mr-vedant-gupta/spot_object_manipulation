@@ -81,7 +81,8 @@ class GraphNavInterface(object):
             '6': self._navigate_to,
             '7': self._navigate_route,
             '8': self._navigate_to_anchor,
-            '9': self._clear_graph
+            '9': self._clear_graph,
+            '10': self._navigate_all
         }
 
     def _get_localization_state(self, *args):
@@ -146,6 +147,7 @@ class GraphNavInterface(object):
         # Update and print waypoints and edges
         self._current_annotation_name_to_wp_id, self._current_edges = graph_nav_util.update_waypoints_and_edges(
             graph, localization_id)
+        print("waypoints:", self._current_annotation_name_to_wp_id)
 
     def _upload_graph_and_snapshots(self, *args):
         """Upload the graph and snapshots to the robot."""
@@ -295,6 +297,7 @@ class GraphNavInterface(object):
             self.toggle_power(should_power_on=False)
 
     def _navigate_route(self, *args):
+        print("args: ", args)
         """Navigate through a specific route of waypoints."""
         if len(args) < 1 or len(args[0]) < 1:
             # If no waypoint ids are given as input, then return without requesting navigation.
@@ -420,6 +423,16 @@ class GraphNavInterface(object):
                     # This edge matches the pair of waypoints! Add it the edge list and continue.
                     return map_pb2.Edge.Id(from_waypoint=waypoint1, to_waypoint=waypoint2)
         return None
+    def _navigate_all(self, *args):
+        waypoints = list(self._current_annotation_name_to_wp_id.values())
+        #temporary changes - remove!
+        waypoints_1 = [waypoints[0]]
+        for wp in waypoints[1:]:
+            if self._match_edge(self._current_edges, waypoints_1[-1], wp):
+                waypoints_1.append(wp)
+        #--------------------------
+        self._navigate_route(waypoints_1)
+
 
     def _on_quit(self):
         """Cleanup on quit from the command line interface."""
@@ -448,6 +461,7 @@ class GraphNavInterface(object):
                 When only yaw is specified, the quaternion is constructed from the yaw.
                 When yaw is not specified, an identity quaternion is used.
             (9) Clear the current graph.
+            (10) navigate sequentially to all waypoints
             (q) Exit.
             """)
             try:

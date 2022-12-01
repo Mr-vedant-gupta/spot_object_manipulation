@@ -95,7 +95,7 @@ def main(argv):
             print(1)
             dogtoy, image, vision_tform_dogtoy, dummy = get_obj_and_img(
                 graph_nav_client, network_compute_client, options.ml_service, options.model,
-                options.confidence_dogtoy, kImageSources, options.label)
+                options.confidence_dogtoy, kImageSources, options.label, robot)
             print(2)
             if dogtoy is None:
                 # Didn't find anything, keep searching.
