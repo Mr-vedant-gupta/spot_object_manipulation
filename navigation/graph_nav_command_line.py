@@ -259,7 +259,9 @@ class GraphNavInterface(object):
 
     def _navigate_to(self, *args):
         """Navigate to a specific waypoint."""
+        print("args: ", args)
         # Take the first argument as the destination waypoint.
+
         if len(args) < 1:
             # If no waypoint id is given as input, then return without requesting navigation.
             print("No waypoint provided as a destination for navigate to.")
@@ -425,13 +427,16 @@ class GraphNavInterface(object):
         return None
     def _navigate_all(self, *args):
         waypoints = list(self._current_annotation_name_to_wp_id.values())
+        for waypoint in waypoints:
+            self._navigate_to([waypoint])
+
         #temporary changes - remove!
-        waypoints_1 = [waypoints[0]]
-        for wp in waypoints[1:]:
-            if self._match_edge(self._current_edges, waypoints_1[-1], wp):
-                waypoints_1.append(wp)
-        #--------------------------
-        self._navigate_route(waypoints_1)
+        # waypoints_1 = [waypoints[0]]
+        # for wp in waypoints[1:]:
+        #     if self._match_edge(self._current_edges, waypoints_1[-1], wp):
+        #         waypoints_1.append(wp)
+        # #--------------------------
+        # self._navigate_route(waypoints_1)
 
 
     def _on_quit(self):
