@@ -35,18 +35,6 @@ from bosdyn.client.util import add_base_arguments, authenticate, setup_logging
 from helpers.constants import *
 
 
-def power_on(robot):
-    """Power on robot.
-
-    Args:
-        robot: (Robot) Interface to Spot robot.
-    """
-    robot.logger.info("Powering on robot...")
-    robot.power_on(timeout_sec=20)
-    assert robot.is_powered_on(), "Robot power on failed."
-    robot.logger.info("Robot powered on.")
-
-
 def safe_power_off(robot):
     """Sit and power off robot.
 
@@ -57,52 +45,6 @@ def safe_power_off(robot):
     robot.power_off(cut_immediately=False, timeout_sec=20)
     assert not robot.is_powered_on(), "Robot power off failed."
     robot.logger.info("Robot safely powered off.")
-
-
-def stand(robot):
-    """Stand robot.
-
-    Args:
-        robot: (Robot) Interface to Spot robot.
-    """
-    robot.logger.info("Commanding robot to stand...")
-    command_client = robot.ensure_client(RobotCommandClient.default_service_name)
-    blocking_stand(command_client, timeout_sec=10)
-    robot.logger.info("Robot standing.")
-
-
-def pitch_up(robot):
-    """Pitch robot up to look for door handle.
-
-    Args:
-        robot: (Robot) Interface to Spot robot.
-    """
-    robot.logger.info("Pitching robot up...")
-    command_client = robot.ensure_client(RobotCommandClient.default_service_name)
-    footprint_R_body = geometry.EulerZXY(0.0, 0.0, -1 * math.pi / 6.0)
-    cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body)
-    cmd_id = command_client.robot_command(cmd)
-    timeout_sec = 10.0
-    end_time = time.time() + timeout_sec
-    while time.time() < end_time:
-        response = command_client.robot_command_feedback(cmd_id)
-        synchronized_feedback = response.feedback.synchronized_feedback
-        status = synchronized_feedback.mobility_command_feedback.stand_feedback.status
-        if (status == basic_command_pb2.StandCommand.Feedback.STATUS_IS_STANDING):
-            robot.logger.info("Robot pitched.")
-            return
-        time.sleep(1.0)
-    raise Exception("Failed to pitch robot.")
-
-
-def check_estop(robot):
-    """Verify that robot is not estopped. E-Stop should be run in a separate process.
-
-    Args:
-        robot: (Robot) Interface to Spot robot.
-    """
-    assert not robot.is_estopped(), "Robot is estopped. Please use an external E-Stop client, " \
-                                    "such as the estop SDK example, to configure E-Stop."
 
 
 def walk_to_object_in_image(robot, request_manager):
@@ -208,25 +150,6 @@ class RequestManager:
     def user_input_set(self):
         """bool: True if handle and hinge position set."""
         return (self.handle_position_side_by_side and self.hinge_position_side_by_side)
-
-    def _on_mouse(self, event, x, y, flags, param):
-        if event == cv2.EVENT_LBUTTONDOWN:
-            if not self.handle_position_side_by_side:
-                cv2.circle(self.side_by_side, (x, y), 30, (255, 0, 0), 5)
-                _draw_text_on_image(self.side_by_side, "Click hinge.")
-                cv2.imshow(self.window_name, self.side_by_side)
-                self.handle_position_side_by_side = (x, y)
-            elif not self.hinge_position_side_by_side:
-                self.hinge_position_side_by_side = (x, y)
-
-    def get_user_input_handle_and_hinge(self):
-        """Open window showing the side by side fisheye images with on-screen prompts for user."""
-        _draw_text_on_image(self.side_by_side, "Click handle.")
-        cv2.imshow(self.window_name, self.side_by_side)
-        cv2.setMouseCallback(self.window_name, self._on_mouse)
-        while not self.user_input_set():
-            cv2.waitKey(1)
-        cv2.destroyAllWindows()
 
     def get_walk_to_object_in_image_request(self):
         """Convert from touchpoints in side by side image to a WalkToObjectInImage request.
@@ -415,62 +338,3 @@ def execute_open_door(robot, source, x, y, image):
 
     # Safely power off the robot, which sits then cuts motor power.
     safe_power_off(robot)
-
-
-def initialize_robot(options):
-    """Generate a Robot objects, then authenticate and timesync.
-
-    Returns:
-        Robot
-    """
-    sdk = create_standard_sdk('DoorExample')
-    robot = sdk.create_robot(options.hostname)
-    authenticate(robot)
-    robot.time_sync.wait_for_sync()
-    return robot
-
-
-def open_door_main(options):
-    """Main function for opening door."""
-    setup_logging(options.verbose)
-
-    robot = initialize_robot(options)
-    assert robot.has_arm(), "Robot requires an arm to open door."
-
-    # Verify the robot is not estopped.
-    check_estop(robot)
-
-    # A lease is required to drive the robot.
-    lease_client = robot.ensure_client(LeaseClient.default_service_name)
-    # Note that the take lease API is used, rather than acquire. Using acquire is typically a
-    # better practice, but in this example, a user might want to switch back and forth between
-    # using the tablet and using this script. Using take make this a bit less painful.
-    lease_client.take()
-    try:
-        with LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=True):
-            # Execute open door command sequence.
-            execute_open_door(robot, options)
-            comment = "Opened door successfully."
-            robot.operator_comment(comment)
-            robot.logger.info(comment)
-    except Exception:
-        comment = "Failed to open door."
-        robot.operator_comment(comment)
-        robot.logger.info(comment)
-        raise
-    return True
-
-
-def main(argv):
-    """Command line interface."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    add_base_arguments(parser)
-    parser.add_argument('--debug', action='store_true', help='Show intermediate debug data.')
-
-    options = parser.parse_args(argv)
-    return open_door_main(options)
-
-
-if __name__ == '__main__':
-    if not main(sys.argv[1:]):
-        sys.exit(1)
