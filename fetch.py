@@ -5,6 +5,7 @@
 # Development Kit License (20191101-BDSDK-SL).
 
 import argparse
+from VisionModel import VisionModel
 import sys
 import time
 import numpy as np
@@ -43,6 +44,9 @@ class Fetch:
         self.options = options 
         self.initialize_sdk()
         self.initialize_clients()
+
+        self.vision_model = VisionModel(self.graph_nav_client, self.network_compute_client, self.options.ml_service, self.options.model,
+                    self.options.confidence_dogtoy, kImageSources, self.robot)
 
     def initialize_sdk(self):
         self.sdk = bosdyn.client.create_standard_sdk('SpotFetchClient')
@@ -85,12 +89,13 @@ class Fetch:
             block_for_trajectory_cmd(self.command_client, cmd_id, timeout_sec=5, verbose=True)
 
             # The ML result is a bounding box.  Find the center.
-            return find_center_px(dogtoy.image_properties.coordinates)
+            return self.vision_model.find_center_px(dogtoy.image_properties.coordinates)
 
     def run_fetch(self, label, seed_tform_obj):
         # This script assumes the robot is already standing via the tablet.  We'll take over from the
         # tablet.
         self.lease_client.take()
+
 
         with bosdyn.client.lease.LeaseKeepAlive(self.lease_client, must_acquire=True, return_at_exit=True):
 
@@ -98,9 +103,7 @@ class Fetch:
              while not grasp_completed:
 
                 # Capture an image and run ML on it.
-                dogtoy, image, vision_tform_dogtoy, source = get_obj_and_img(
-                    self.graph_nav_client, self.network_compute_client, self.options.ml_service, self.options.model,
-                    self.options.confidence_dogtoy, kImageSources, self.options.label, self.robot)
+                dogtoy, image, vision_tform_dogtoy, source = self.vision_model.get_object_and_image(self.options.label)
 
                 #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
                 if dogtoy is None:

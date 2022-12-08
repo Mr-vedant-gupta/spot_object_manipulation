@@ -184,7 +184,6 @@ class VisionModel:
 
         return img
 
-
     def find_center_px(self, polygon):
         min_x = math.inf
         min_y = math.inf
@@ -202,3 +201,4 @@ class VisionModel:
         x = math.fabs(max_x - min_x) / 2.0 + min_x
         y = math.fabs(max_y - min_y) / 2.0 + min_y
         return (x, y)
+
