@@ -6,20 +6,20 @@
 
 """Command line interface for graph nav with options to download/upload a map and to navigate a map. """
 
-import argparse
-import logging
 import math
 import os
 import sys
 import time
 
-import google.protobuf.timestamp_pb2
 import graph_nav_util
-import grpc
 
 import bosdyn.client.channel
 import bosdyn.client.util
-from bosdyn.api import geometry_pb2, power_pb2, robot_state_pb2
+from vision_model import VisionModel
+from fetch_model import FetchModel
+from bosdyn.client.network_compute_bridge_client import NetworkComputeBridgeClient
+from bosdyn.client.manipulation_api_client import ManipulationApiClient
+from bosdyn.api import robot_state_pb2
 from bosdyn.api.graph_nav import graph_nav_pb2, map_pb2, nav_pb2
 from bosdyn.client.exceptions import ResponseError
 from bosdyn.client.frame_helpers import get_odom_tform_body
@@ -30,6 +30,8 @@ from bosdyn.client.power import PowerClient, power_on, safe_power_off
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
 
+HOSTNAME = "138.16.161.12"
+UPLOAD_FILEPATH = "~/drawer/navigation/maps/downloaded_graph"
 
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
@@ -43,6 +45,7 @@ class GraphNavInterface(object):
         # Create robot state and command clients.
         self._robot_command_client = self._robot.ensure_client(
             RobotCommandClient.default_service_name)
+
         self._robot_state_client = self._robot.ensure_client(RobotStateClient.default_service_name)
 
         # Create the client for the Graph Nav main service.
@@ -50,6 +53,13 @@ class GraphNavInterface(object):
 
         # Create a power client for the robot.
         self._power_client = self._robot.ensure_client(PowerClient.default_service_name)
+
+        self._network_compute_client = self.robot.ensure_client(NetworkComputeBridgeClient.default_service_name)
+
+        self._manipulation_api_client = self.robot.ensure_client(ManipulationApiClient.default_service_name)
+
+        self.vision_model = VisionModel(self._graph_nav_client, self._network_compute_client, self.image_sources, self._robot)
+        self.fetch_model = FetchModel(self.robot, self.vision_model, self._robot_state_client, self._robot_command_client, self._manipulation_api_client)
 
         # Boolean indicating the robot's power state.
         power_state = self._robot_state_client.get_robot_state().power_state
@@ -102,7 +112,6 @@ class GraphNavInterface(object):
         localization = nav_pb2.Localization()
         self._graph_nav_client.set_localization(initial_guess_localization=localization,
                                                 ko_tform_body=current_odom_tform_body)
-
 
     def _set_initial_localization_waypoint(self, *args):
         """Trigger localization to a waypoint."""
@@ -466,7 +475,10 @@ class GraphNavInterface(object):
                 When only yaw is specified, the quaternion is constructed from the yaw.
                 When yaw is not specified, an identity quaternion is used.
             (9) Clear the current graph.
-            (10) navigate sequentially to all waypoints
+            (10) Visit All Waypoints. Detect objects.
+            (11) List object locations
+            (12) Move To Object Location.
+            (13) Manipulate Object.
             (q) Exit.
             """)
             try:
@@ -491,18 +503,14 @@ class GraphNavInterface(object):
 
 def main(argv):
     """Run the command-line interface."""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('-u', '--upload-filepath',
-                        help='Full filepath to graph and snapshots to be uploaded.', required=True)
-    bosdyn.client.util.add_base_arguments(parser)
-    options = parser.parse_args(argv)
 
     # Setup and authenticate the robot.
     sdk = bosdyn.client.create_standard_sdk('GraphNavClient')
-    robot = sdk.create_robot(options.hostname)
+    sdk.register_service_client(NetworkComputeBridgeClient)
+    robot = sdk.create_robot(HOSTNAME)
     bosdyn.client.util.authenticate(robot)
 
-    graph_nav_command_line = GraphNavInterface(robot, options.upload_filepath)
+    graph_nav_command_line = GraphNavInterface(robot, UPLOAD_FILEPATH)
     lease_client = robot.ensure_client(LeaseClient.default_service_name)
     try:
         with LeaseKeepAlive(lease_client, must_acquire=True, return_at_exit=True):

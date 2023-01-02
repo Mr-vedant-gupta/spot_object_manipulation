@@ -32,9 +32,6 @@ from bosdyn.client.manipulation_api_client import ManipulationApiClient
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient, blocking_stand
 from bosdyn.client.util import add_base_arguments, authenticate, setup_logging
 
-from helpers.constants import *
-
-
 def safe_power_off(robot):
     """Sit and power off robot.
 
@@ -310,7 +307,7 @@ def open_door(robot, request_manager, snapshot):
     raise Exception("Door command timed out. Try repositioning the robot.")
 
 
-def execute_open_door(robot, source, x, y, image):
+def execute_open_door(robot,image_sources,source, x, y, image):
     """High level behavior sequence for commanding the robot to open a door."""
 
 

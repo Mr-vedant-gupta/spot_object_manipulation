@@ -11,20 +11,27 @@ from google.protobuf import wrappers_pb2
 from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 
+MODEL_NAME = "handle_model"
+SERVER_NAME = "fetch-server"
+CONFIDENCE_THRESHOLD = 0.5
+
 class VisionModel:
-    def __init__(self, graph_nav_client, network_compute_client, server, model, confidence, image_sources, robot):
+    image_sources = [
+            'frontleft_fisheye_image', 'frontright_fisheye_image',
+            'left_fisheye_image', 'right_fisheye_image', 'back_fisheye_image'
+        ]
+    def __init__(self, graph_nav_client, network_compute_client, robot):
         self.graph_nav_client = graph_nav_client
         self.network_compute_client = network_compute_client
-        self.server = server
-        self.model = model
-        self.confidence = confidence
-        self.image_sources = image_sources
         self.robot = robot
 
         self.thread = Thread(target = self.__thread_start_object_detection, args = (10, ))
         self.kill_thread = False
+
         #TODO: dont use magic strings
         self.labels = ["door_handle","handle"]
+
+        self.load_model(None)
     def load_model(self,path):
         # Via network compute server
         pass
@@ -67,14 +74,13 @@ class VisionModel:
             #   if we should automatically rotate the image
             input_data = network_compute_bridge_pb2.NetworkComputeInputData(
                 image_source_and_service=image_source_and_service,
-                model_name=self.model,
-                min_confidence=self.confidence,
-                rotate_image=network_compute_bridge_pb2.NetworkComputeInputData.
-                ROTATE_IMAGE_ALIGN_HORIZONTAL)
+                model_name=MODEL_NAME,
+                min_confidence=CONFIDENCE_THRESHOLD,
+                rotate_image=network_compute_bridge_pb2.NetworkComputeInputData.ROTATE_IMAGE_ALIGN_HORIZONTAL)
 
             # Server data: the service name
             server_data = network_compute_bridge_pb2.NetworkComputeServerConfiguration(
-                service_name=self.server)
+                service_name=SERVER_NAME)
 
             # Pack and send the request.
             process_img_req = network_compute_bridge_pb2.NetworkComputeRequest(
