@@ -25,7 +25,6 @@ FORCE_LIMIT = 50
 class FetchModel:
 
     def __init__(self, robot, vision_model, robot_state_client, robot_command_client, manipulation_api_client):
-        self.initialize_sdk()
         self.robot = robot
         self.vision_model = vision_model
         self.robot_state_client = robot_state_client
