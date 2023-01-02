@@ -44,7 +44,7 @@ class VisionModel:
         while True:
             if self.kill_thread:
                 # write the python object (dict) to pickle file
-                pickle.dump(dict,f)
+                pickle.dump(objects, f)
                 f.close()
                 break
             for l in self.labels:
