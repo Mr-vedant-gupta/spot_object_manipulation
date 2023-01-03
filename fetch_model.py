@@ -62,16 +62,20 @@ class FetchModel:
 
         #with bosdyn.client.lease.LeaseKeepAlive(self.lease_client, must_acquire=True, return_at_exit=True):
 
+        print("1")
+
         grasp_completed = False
         while not grasp_completed:
+            print("2")
 
             # Capture an image and run ML on it.
-            dogtoy, image, vision_tform_dogtoy, source = self.vision_model.get_object_and_image(label)
+            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
 
             #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
             if dogtoy is None:
                 # Didn't find anything, keep searching.
                 continue
+            print("3")
 
             # Detected Object. Request pick up.
 
@@ -84,10 +88,13 @@ class FetchModel:
              center_px_y) = self.get_center_of_image(dogtoy, vision_tform_dogtoy)
 
             
+            print("4")
             if label =="door_handle":
+                print("5")
                 print("DOOR HANDLE")
                 execute_open_door(self.robot,self.vision_model.image_sources, source, center_px_x, center_px_y, image)
             if label =="handle":
+                print("6")
                 print("DRAWER")
                 #execute_open_drawer(self.robot, source, center_px_x, center_px_y, image)
                 # Request Pick Up on that pixel.

@@ -11,7 +11,7 @@ from google.protobuf import wrappers_pb2
 from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 
-MODEL_NAME = "handle_model"
+MODEL_NAME = "handle-model"
 SERVER_NAME = "fetch-server"
 CONFIDENCE_THRESHOLD = 0.5
 
@@ -25,7 +25,7 @@ class VisionModel:
         self.network_compute_client = network_compute_client
         self.robot = robot
 
-        self.thread = Thread(target = self.__thread_start_object_detection, args = (10, ))
+        self.thread = Thread(target = self.__thread_start_object_detection)
         self.kill_thread = False
 
         #TODO: dont use magic strings
@@ -65,7 +65,7 @@ class VisionModel:
     def get_object_and_image(self, label):
         for source in self.image_sources:
             # Build a network compute request for this image source.
-            image_source_and_service = self.network_compute_bridge_pb2.ImageSourceAndService(
+            image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
                 image_source=source)
 
             # Input data:
@@ -120,7 +120,7 @@ class VisionModel:
 
                         #print("GRAPH")
                         #print(graph)
-                        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(robot.get_frame_tree_snapshot())
+                        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self.robot.get_frame_tree_snapshot())
                         body_tform_vision = vision_tform_body.inverse()
                         #print("body vision: ", body_tform_vision)
                         localization_state = self.graph_nav_client.get_localization_state()

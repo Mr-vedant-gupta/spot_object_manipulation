@@ -30,8 +30,8 @@ from bosdyn.client.power import PowerClient, power_on, safe_power_off
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
 
-HOSTNAME = "138.16.161.12"
-UPLOAD_FILEPATH = "~/drawer/navigation/maps/downloaded_graph"
+HOSTNAME = "138.16.161.22"
+UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
 
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
@@ -54,12 +54,12 @@ class GraphNavInterface(object):
         # Create a power client for the robot.
         self._power_client = self._robot.ensure_client(PowerClient.default_service_name)
 
-        self._network_compute_client = self.robot.ensure_client(NetworkComputeBridgeClient.default_service_name)
+        self._network_compute_client = self._robot.ensure_client(NetworkComputeBridgeClient.default_service_name)
 
-        self._manipulation_api_client = self.robot.ensure_client(ManipulationApiClient.default_service_name)
+        self._manipulation_api_client = self._robot.ensure_client(ManipulationApiClient.default_service_name)
 
-        self.vision_model = VisionModel(self._graph_nav_client, self._network_compute_client, self.image_sources, self._robot)
-        self.fetch_model = FetchModel(self.robot, self.vision_model, self._robot_state_client, self._robot_command_client, self._manipulation_api_client)
+        self.vision_model = VisionModel(self._graph_nav_client, self._network_compute_client, self._robot)
+        self.fetch_model = FetchModel(self._robot, self.vision_model, self._robot_state_client, self._robot_command_client, self._manipulation_api_client)
 
         # Boolean indicating the robot's power state.
         power_state = self._robot_state_client.get_robot_state().power_state
@@ -92,8 +92,12 @@ class GraphNavInterface(object):
             '7': self._navigate_route,
             '8': self._navigate_to_anchor,
             '9': self._clear_graph,
-            '10': self._navigate_all
+            '10': self._navigate_all,
+            '14': self._test
         }
+
+    def _test(self, *args):
+        self.fetch_model.run_fetch("door_handle", None)
 
     def _get_localization_state(self, *args):
         """Get the current localization and state of the robot."""
@@ -303,9 +307,9 @@ class GraphNavInterface(object):
             is_finished = self._check_success(nav_to_cmd_id)
 
         # Power off the robot if appropriate.
-        if self._powered_on and not self._started_powered_on:
-            # Sit the robot down + power off after the navigation command is complete.
-            self.toggle_power(should_power_on=False)
+        # if self._powered_on and not self._started_powered_on:
+        #     # Sit the robot down + power off after the navigation command is complete.
+        #     self.toggle_power(should_power_on=False)
 
     def _navigate_route(self, *args):
         print("args: ", args)
@@ -436,8 +440,11 @@ class GraphNavInterface(object):
         return None
     def _navigate_all(self, *args):
         waypoints = list(self._current_annotation_name_to_wp_id.values())
+
+        self.vision_model.start_object_detection()
         for waypoint in waypoints:
             self._navigate_to([waypoint])
+        self.vision_model.stop_object_detection()
 
         #temporary changes - remove!
         # waypoints_1 = [waypoints[0]]
@@ -479,6 +486,7 @@ class GraphNavInterface(object):
             (11) List object locations
             (12) Move To Object Location.
             (13) Manipulate Object.
+            (14) Test.
             (q) Exit.
             """)
             try:
