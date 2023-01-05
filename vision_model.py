@@ -10,6 +10,8 @@ from bosdyn.api import network_compute_bridge_pb2
 from google.protobuf import wrappers_pb2
 from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 MODEL_NAME = "handle-model"
 SERVER_NAME = "fetch-server"
@@ -35,29 +37,68 @@ class VisionModel:
     def load_model(self,path):
         # Via network compute server
         pass
+
+    def __kmeans_cluster(self, objects):
+        clusters = {}
+
+        # objects is in form [(label,SE3Pose),(label,SE3Pose)...]
+        X = np.array([[o[1].x, o[1].y, o[1].z] for o in objects])
+        y = [o[0] for o in objects] 
+
+        min_score = 10000
+
+        best_kmeans = None
+
+        # determine best k value
+        for i in range(2, len(objects)):
+            kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
+            score = silhouette_score(X, kmeans.labels_)
+
+            if score < min_score:
+                best_kmeans = kmeans
+                min_score = score
+
+        # add objects to their proper cluster dictionary key name
+        for i,label in enumerate(best_kmeans.labels_):
+            cluster_name = "object_" + str(label) + "_" + y[i]
+
+            # Add cluster name to dictionary keys
+            if not cluster_name in clusters:
+                clusters[cluster_name] = []
+
+            # add object (SE3Pose) to its correct cluster
+            clusters[cluster_name].append(objects[i][1])
+
+        return clusters, best_kmeans
+
     def __thread_start_object_detection(self):
 
-        objects = {}
+        objects = []
         index = 0
-        # create a binary pickle file 
-        f = open("object_dictionary.pkl","wb")
         while True:
             if self.kill_thread:
+                # create a binary pickle file 
+                clusters_f = open("clusters.pkl","wb")
+                kmeans_f = open("kmeans_model.pkl","wb")
                 # write the python object (dict) to pickle file
-                pickle.dump(objects, f)
-                f.close()
+                clusters, kmeans_model = self.__kmeans_cluster(objects)
+
+                pickle.dump(clusters, clusters_f)
+                pickle.dump(kmeans_model, kmeans_f)
+                clusters_f.close()
+                kmeans_f.close()
                 break
             for l in self.labels:
                 best_obj, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(l)
 
                 if seed_tform_obj is not None:
-                    name = l + "_" + str(index)
-                    objects[name] = seed_tform_obj
+                    objects.append((l,seed_tform_obj))
                     index += 1
 
     def start_object_detection(self):
         self.kill_thread = False
         self.thread.start()
+
 
     def stop_object_detection(self):
         self.kill_thread = True
