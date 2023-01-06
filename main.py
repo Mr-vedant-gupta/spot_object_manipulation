@@ -12,6 +12,7 @@ import sys
 import time
 
 import graph_nav_util
+import pickle
 
 import bosdyn.client.channel
 import bosdyn.client.util
@@ -93,11 +94,28 @@ class GraphNavInterface(object):
             '8': self._navigate_to_anchor,
             '9': self._clear_graph,
             '10': self._navigate_all,
-            '14': self._test
+            '14': self._upload_clusters
         }
+    def _upload_clusters(self, *args):
 
-    def _test(self, *args):
-        self.fetch_model.run_fetch("door_handle", None)
+        if not os.path.isfile("clusters.pkl"):
+            print("clusters.pkl does not exist")
+            return
+
+        if not os.path.isfile("kmeans_model.pkl"):
+            print("kmeans_model.pkl does not exist")
+            return
+
+        with open('kmeans_model.pkl', 'rb') as handle:
+            self.vision_model.kmeans_model = pickle.load(handle)
+
+        with open('clusters.pkl', 'rb') as handle:
+            self.vision_model.clusters = pickle.load(handle)
+
+        print(self.vision_model.clusters)
+
+    # def _test(self, *args):
+    #     self.fetch_model.run_fetch("door_handle", None)
 
     def _get_localization_state(self, *args):
         """Get the current localization and state of the robot."""
@@ -486,7 +504,7 @@ class GraphNavInterface(object):
             (11) List object locations
             (12) Move To Object Location.
             (13) Manipulate Object.
-            (14) Test.
+            (14) Upload Clusters.
             (q) Exit.
             """)
             try:

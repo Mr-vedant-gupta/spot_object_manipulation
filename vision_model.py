@@ -23,6 +23,8 @@ class VisionModel:
             'left_fisheye_image', 'right_fisheye_image', 'back_fisheye_image'
         ]
     def __init__(self, graph_nav_client, network_compute_client, robot):
+        self.clusters = None
+        self.kmeans_model = None 
         self.graph_nav_client = graph_nav_client
         self.network_compute_client = network_compute_client
         self.robot = robot
@@ -81,10 +83,10 @@ class VisionModel:
                 clusters_f = open("clusters.pkl","wb")
                 kmeans_f = open("kmeans_model.pkl","wb")
                 # write the python object (dict) to pickle file
-                clusters, kmeans_model = self.__kmeans_cluster(objects)
+                self.clusters, self.kmeans_model = self.__kmeans_cluster(objects)
 
-                pickle.dump(clusters, clusters_f)
-                pickle.dump(kmeans_model, kmeans_f)
+                pickle.dump(self.clusters, clusters_f)
+                pickle.dump(self.kmeans_model, kmeans_f)
                 clusters_f.close()
                 kmeans_f.close()
                 break
