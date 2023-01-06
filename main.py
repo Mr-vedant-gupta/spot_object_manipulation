@@ -33,6 +33,7 @@ from bosdyn.client.robot_state import RobotStateClient
 
 HOSTNAME = "138.16.161.22"
 UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
+NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
@@ -124,10 +125,10 @@ class GraphNavInterface(object):
     def _navigate_to_object(self, *args):
         """Navigate to a specific waypoint."""
         print("args: ", args)
-        # Take the first argument as the destination waypoint.
+        # Take the first argument as the destination object.
 
         if len(args) < 1:
-            # If no waypoint id is given as input, then return without requesting navigation.
+            # If no object name is given as input, then return without requesting navigation.
             print("No object provided as a destination for navigate to.")
             return
 
@@ -145,6 +146,17 @@ class GraphNavInterface(object):
         # Navigate to the destination.
         is_finished = False
         while not is_finished:
+            """Get the current localization and state of the robot."""
+            state = self._graph_nav_client.get_localization_state()
+            seed_tform_body = SE3Pose.from_obj(state.localization.seed_tform_body)
+
+            distance = math.dist([seed_tform_body.x, seed_tform_body.y], [seed_T_goal.x, seed_T_goal.y])
+
+            # Need and acceptable distance away from object we want to manipulate
+            if distance <= NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE:
+                is_finished = True
+                continue
+
             # Issue the navigation command about twice a second such that it is easy to terminate the
             # navigation command (with estop or killing the program).
             try:
@@ -153,10 +165,11 @@ class GraphNavInterface(object):
             except ResponseError as e:
                 print("Error while navigating {}".format(e))
                 break
-            time.sleep(.5)  # Sleep for half a second to allow for command execution.
+            time.sleep(.1)  # Sleep for tenth of a second to allow for command execution.
             # Poll the robot for feedback to determine if the navigation command is complete. Then sit
             # the robot down once it is finished.
             is_finished = self._check_success(nav_to_cmd_id)
+
 
         # # Power off the robot if appropriate.
         # if self._powered_on and not self._started_powered_on:
