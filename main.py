@@ -94,8 +94,17 @@ class GraphNavInterface(object):
             '8': self._navigate_to_anchor,
             '9': self._clear_graph,
             '10': self._navigate_all,
+            '11': self._list_objects,
+            '12': self._navigate_to_object,
             '14': self._upload_clusters
         }
+
+    def _list_objects(self, *args):
+        if self.vision_model.clusters is None:
+            print("There are no objects. Please upload clusters first.")
+        for label in self.vision_model.clusters.keys():
+            print(label)
+
     def _upload_clusters(self, *args):
 
         if not os.path.isfile("clusters.pkl"):
@@ -112,7 +121,48 @@ class GraphNavInterface(object):
         with open('clusters.pkl', 'rb') as handle:
             self.vision_model.clusters = pickle.load(handle)
 
-        print(self.vision_model.clusters)
+    def _navigate_to_object(self, *args):
+        """Navigate to a specific waypoint."""
+        print("args: ", args)
+        # Take the first argument as the destination waypoint.
+
+        if len(args) < 1:
+            # If no waypoint id is given as input, then return without requesting navigation.
+            print("No object provided as a destination for navigate to.")
+            return
+
+        if not args[0][0] in self.vision_model.clusters.keys():
+            print(args[0][0] + " not in clusters.")
+            return
+
+        seed_T_goal = self.vision_model.clusters[args[0][0]][0]
+
+        if not self.toggle_power(should_power_on=True):
+            print("Failed to power on the robot, and cannot complete navigate to request.")
+            return
+
+        nav_to_cmd_id = None
+        # Navigate to the destination.
+        is_finished = False
+        while not is_finished:
+            # Issue the navigation command about twice a second such that it is easy to terminate the
+            # navigation command (with estop or killing the program).
+            try:
+                nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
+                    seed_T_goal.to_proto(), 1.0, command_id=nav_to_cmd_id)
+            except ResponseError as e:
+                print("Error while navigating {}".format(e))
+                break
+            time.sleep(.5)  # Sleep for half a second to allow for command execution.
+            # Poll the robot for feedback to determine if the navigation command is complete. Then sit
+            # the robot down once it is finished.
+            is_finished = self._check_success(nav_to_cmd_id)
+
+        # # Power off the robot if appropriate.
+        # if self._powered_on and not self._started_powered_on:
+        #     # Sit the robot down + power off after the navigation command is complete.
+        #     self.toggle_power(should_power_on=False)
+
 
     # def _test(self, *args):
     #     self.fetch_model.run_fetch("door_handle", None)
@@ -284,9 +334,9 @@ class GraphNavInterface(object):
             is_finished = self._check_success(nav_to_cmd_id)
 
         # Power off the robot if appropriate.
-        if self._powered_on and not self._started_powered_on:
-            # Sit the robot down + power off after the navigation command is complete.
-            self.toggle_power(should_power_on=False)
+        # if self._powered_on and not self._started_powered_on:
+        #     # Sit the robot down + power off after the navigation command is complete.
+        #     self.toggle_power(should_power_on=False)
 
     def _navigate_to(self, *args):
         """Navigate to a specific waypoint."""
@@ -501,8 +551,8 @@ class GraphNavInterface(object):
                 When yaw is not specified, an identity quaternion is used.
             (9) Clear the current graph.
             (10) Visit All Waypoints. Detect objects.
-            (11) List object locations
-            (12) Move To Object Location.
+            (11) List Objects 
+            (12) Move To Object.
             (13) Manipulate Object.
             (14) Upload Clusters.
             (q) Exit.
