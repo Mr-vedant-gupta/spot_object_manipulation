@@ -126,6 +126,7 @@ class GraphNavInterface(object):
             self.vision_model.clusters = pickle.load(handle)
 
     def _navigate_to_object(self, *args):
+
         """Navigate to a specific waypoint."""
         print("args: ", args)
         # Take the first argument as the destination object.
@@ -145,33 +146,80 @@ class GraphNavInterface(object):
             print("Failed to power on the robot, and cannot complete navigate to request.")
             return
 
-        nav_to_cmd_id = None
-        # Navigate to the destination.
-        is_finished = False
-        while not is_finished:
-            """Get the current localization and state of the robot."""
-            state = self._graph_nav_client.get_localization_state()
-            seed_tform_body = SE3Pose.from_obj(state.localization.seed_tform_body)
+        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
+        body_tform_vision = vision_tform_body.inverse()
 
-            distance = math.dist([seed_tform_body.x, seed_tform_body.y], [seed_T_goal.x, seed_T_goal.y])
+        localization_state = self._graph_nav_client.get_localization_state()
+        seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
-            # Need and acceptable distance away from object we want to manipulate
-            if distance <= NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE:
-                is_finished = True
-                continue
+        if seed_tform_body == None:
+            print("Forgot to upload map")
+        else:
 
-            # Issue the navigation command about twice a second such that it is easy to terminate the
-            # navigation command (with estop or killing the program).
-            try:
-                nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
-                    seed_T_goal.to_proto(), 1.0, command_id=nav_to_cmd_id)
-            except ResponseError as e:
-                print("Error while navigating {}".format(e))
-                break
-            time.sleep(.1)  # Sleep for tenth of a second to allow for command execution.
-            # Poll the robot for feedback to determine if the navigation command is complete. Then sit
-            # the robot down once it is finished.
-            is_finished = self._check_success(nav_to_cmd_id)
+            seed_tform_vision = seed_tform_body * body_tform_vision
+            vision_tform_seed = seed_tform_vision.inverse()
+            vision_tform_goal = vision_tform_seed * seed_T_goal 
+            self.fetch_model.move_robot_to_location(vision_tform_goal)
+
+            label = None
+
+            if "door_handle" in args[0][0]:
+                label = "door_handle"
+            else:
+                label = "handle"
+
+                
+            self.fetch_model.run_fetch(label, args[0][0])
+
+
+
+
+        # """Navigate to a specific waypoint."""
+        # print("args: ", args)
+        # # Take the first argument as the destination object.
+        #
+        # if len(args) < 1:
+        #     # If no object name is given as input, then return without requesting navigation.
+        #     print("No object provided as a destination for navigate to.")
+        #     return
+        #
+        # if not args[0][0] in self.vision_model.clusters.keys():
+        #     print(args[0][0] + " not in clusters.")
+        #     return
+        #
+        # seed_T_goal = self.vision_model.clusters[args[0][0]][0]
+        #
+        # if not self.toggle_power(should_power_on=True):
+        #     print("Failed to power on the robot, and cannot complete navigate to request.")
+        #     return
+        #
+        # nav_to_cmd_id = None
+        # # Navigate to the destination.
+        # is_finished = False
+        # while not is_finished:
+        #     """Get the current localization and state of the robot."""
+        #     state = self._graph_nav_client.get_localization_state()
+        #     seed_tform_body = SE3Pose.from_obj(state.localization.seed_tform_body)
+        #
+        #     distance = math.dist([seed_tform_body.x, seed_tform_body.y], [seed_T_goal.x, seed_T_goal.y])
+        #
+        #     # Need and acceptable distance away from object we want to manipulate
+        #     if distance <= NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE:
+        #         is_finished = True
+        #         continue
+        #
+        #     # Issue the navigation command about twice a second such that it is easy to terminate the
+        #     # navigation command (with estop or killing the program).
+        #     try:
+        #         nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
+        #             seed_T_goal.to_proto(), 1.0, command_id=nav_to_cmd_id)
+        #     except ResponseError as e:
+        #         print("Error while navigating {}".format(e))
+        #         break
+        #     time.sleep(.1)  # Sleep for tenth of a second to allow for command execution.
+        #     # Poll the robot for feedback to determine if the navigation command is complete. Then sit
+        #     # the robot down once it is finished.
+        #     is_finished = self._check_success(nav_to_cmd_id)
 
 
         # # Power off the robot if appropriate.

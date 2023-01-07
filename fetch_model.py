@@ -31,11 +31,11 @@ class FetchModel:
         self.robot_command_client = robot_command_client
         self.manipulation_api_client = manipulation_api_client
 
-    def get_center_of_image(self, dogtoy, vision_tform_dogtoy):
+    def move_robot_to_location(self, vision_tform_dogtoy):
         # Walk to the object.
         # NOTE: compare object we want to go to, vs object we see
         walk_rt_vision, heading_rt_vision = compute_stand_location_and_yaw(
-            vision_tform_dogtoy, self.robot_state_client, distance_margin=1.5)
+            vision_tform_dogtoy, self.robot_state_client, distance_margin=2.0)
 
         move_cmd = RobotCommandBuilder.trajectory_command(
             goal_x=walk_rt_vision[0],
@@ -43,18 +43,15 @@ class FetchModel:
             goal_heading=heading_rt_vision,
             frame_name=frame_helpers.VISION_FRAME_NAME,
             params=get_walking_params(0.5, 0.5))
-        end_time = 5.0
+        end_time = 15.0
         cmd_id = self.robot_command_client.robot_command(command=move_cmd,
                                               end_time_secs=time.time() +
                                               end_time)
 
         # Wait until the robot reports that it is at the goal.
-        block_for_trajectory_cmd(self.robot_command_client, cmd_id, timeout_sec=5, verbose=True)
+        block_for_trajectory_cmd(self.robot_command_client, cmd_id, timeout_sec=15, verbose=True)
 
-        # The ML result is a bounding box.  Find the center.
-        return self.vision_model.find_center_px(dogtoy.image_properties.coordinates)
-
-    def run_fetch(self, label, seed_tform_obj):
+    def run_fetch(self, label, cluster_name):
         # This script assumes the robot is already standing via the tablet.  We'll take over from the
         # tablet.
         #self.lease_client.take()
@@ -63,19 +60,27 @@ class FetchModel:
         #with bosdyn.client.lease.LeaseKeepAlive(self.lease_client, must_acquire=True, return_at_exit=True):
 
         print("1")
-
         grasp_completed = False
         while not grasp_completed:
-            print("2")
 
+            print("2")
             # Capture an image and run ML on it.
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
 
+            prediction = self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y, seed_tform_obj.z]])[0]
+
+            if str(prediction) not in cluster_name:
+                print(str(prediction))
+                print(cluster_name)
+                print("what we see does not match cluster")
+                continue
+
+
+            print("3")
             #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
             if dogtoy is None:
                 # Didn't find anything, keep searching.
                 continue
-            print("3")
 
             # Detected Object. Request pick up.
 
@@ -84,17 +89,21 @@ class FetchModel:
             self.robot_command_client.robot_command(stow_cmd)
 
 
+            print("4")
+            self.move_robot_to_location(vision_tform_dogtoy)
+
+            # The ML result is a bounding box.  Find the center.
             (center_px_x,
-             center_px_y) = self.get_center_of_image(dogtoy, vision_tform_dogtoy)
+             center_px_y) = self.vision_model.find_center_px(dogtoy.image_properties.coordinates)
 
             
-            print("4")
+            print("5")
             if label =="door_handle":
-                print("5")
+                print("6")
                 print("DOOR HANDLE")
                 execute_open_door(self.robot,self.vision_model.image_sources, source, center_px_x, center_px_y, image)
             if label =="handle":
-                print("6")
+                print("7")
                 print("DRAWER")
                 #execute_open_drawer(self.robot, source, center_px_x, center_px_y, image)
                 # Request Pick Up on that pixel.
@@ -206,7 +215,12 @@ class FetchModel:
                 self.robot_command_client.robot_command_async(command)
 
                 print("Finished action 2")
+
                 time.sleep(2)
+
+                # Stow the arm in case it is deployed
+                stow_cmd = RobotCommandBuilder.arm_stow_command()
+                self.robot_command_client.robot_command(stow_cmd)
 
 def main(argv):
 
