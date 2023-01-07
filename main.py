@@ -13,7 +13,7 @@ import time
 
 import graph_nav_util
 import pickle
-
+from threading import Thread
 import bosdyn.client.channel
 import bosdyn.client.util
 from vision_model import VisionModel
@@ -30,6 +30,9 @@ from bosdyn.client.math_helpers import Quat, SE3Pose
 from bosdyn.client.power import PowerClient, power_on, safe_power_off
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
+from bosdyn.client.robot_command import RobotCommandClient, blocking_stand
+from bosdyn.geometry import EulerZXY
+from bosdyn.client.robot_command import RobotCommandBuilder
 
 HOSTNAME = "138.16.161.22"
 UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
@@ -136,7 +139,7 @@ class GraphNavInterface(object):
             print(args[0][0] + " not in clusters.")
             return
 
-        seed_T_goal = self.vision_model.clusters[args[0][0]][0]
+        seed_T_goal = self.vision_model.clusters[args[0][0]][0] #the list will only have one element
 
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
@@ -519,13 +522,70 @@ class GraphNavInterface(object):
                     # This edge matches the pair of waypoints! Add it the edge list and continue.
                     return map_pb2.Edge.Id(from_waypoint=waypoint1, to_waypoint=waypoint2)
         return None
+
+    def _look_for_obj(self):
+        self.obj_found = False
+        self.thread_stopped = False
+        THRESHOLD = 4
+        while self.thread_running:
+
+            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
+            if dogtoy is not None:
+                #check if distance is within threshold
+                distance = 
+                    (seed_tform_obj.position.x - self.loc.position.x)**2 + \
+                    (seed_tform_obj.position.y - self.loc.position.y)**2 + \
+                    (seed_tform_obj.position.z - self.loc.position.z)**2 
+                if distance < THRESHOLD:
+                    self.obj_found = True
+                    self.thread_stopped = True
+                    break
+        self.thread_stopped = True
+        
+            
+            
+
+
     def _navigate_all(self, *args):
+        self._list_graph_waypoint_and_edge_ids([])
         waypoints = list(self._current_annotation_name_to_wp_id.values())
 
         self.vision_model.start_object_detection()
-        for waypoint in waypoints:
-            self._navigate_to([waypoint])
+        for i in range(3):
+            for waypoint in waypoints:
+                self._navigate_to([waypoint])
         self.vision_model.stop_object_detection()
+        while self.vision_model.thread_running: # wait for the thread to finish up
+            time.sleep(1) 
+        #check if each cluster is valid
+        print("validating each cluster")
+        clusters = self.vision_model.clusters
+        new_clusters = {}
+        for cluster in clusters:
+            label = cluster[cluster.find("__") + 2:]
+            self._navigate_to_object([cluster])
+            self.label = label
+            self.obj_found = False
+            self.thread_running = True
+            self.loc = clusters[cluster]
+            self.thread = Thread(target = self._look_for_obj)
+            command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+            footprint_R_body = EulerZXY(yaw=0.4, roll=0.4, pitch=0.4)
+            cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.2)
+            command_client.robot_command(cmd)
+            self.thread_running = False
+            while self.thread_stopped = False:
+                time.sleep(0.5)
+            if self.obj_found:
+                new_clusters[cluster] = clusters[cluster]
+            else:
+                print("No match found for ", cluster, ". This cluster will be discarded.")
+        self.vision_model.clusters = new_clusters
+        clusters_f = open("clusters.pkl","wb")
+        pickle.dump(new_clusters, clusters_f)
+        clusters_f.close()
+
+
 
         #temporary changes - remove!
         # waypoints_1 = [waypoints[0]]

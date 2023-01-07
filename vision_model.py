@@ -28,6 +28,7 @@ class VisionModel:
         self.graph_nav_client = graph_nav_client
         self.network_compute_client = network_compute_client
         self.robot = robot
+        self.thread_running = False
 
         self.thread = Thread(target = self.__thread_start_object_detection)
         self.kill_thread = False
@@ -62,7 +63,7 @@ class VisionModel:
 
         # add objects to their proper cluster dictionary key name
         for i,label in enumerate(best_kmeans.labels_):
-            cluster_name = "object_" + str(label) + "_" + y[i]
+            cluster_name = "object_" + str(label) + "__" + y[i] #adding two dashes before label name so that it can be extracted easily
 
             # Add cluster name to dictionary keys
             if not cluster_name in clusters:
@@ -72,9 +73,28 @@ class VisionModel:
             clusters[cluster_name].append(objects[i][1])
 
         return clusters, best_kmeans
+    
+    def _find_cluster_averages(clusters):
+        averaged_cluster = {}
+        for cluster_name in clusters:
+            n = len(clusters[cluster_name])
+            x_values = [i.position.x for i in clusters[cluster_name]]
+            x = sum(x_values)/n
+            y_values = [i.position.y for i in clusters[cluster_name]]
+            y = sum(y_values)/n
+            z_values = [i.position.z for i in clusters[cluster_name]]
+            z = sum(z_values)/n
+
+            #pick rotation value randomly from one of the SE3Poses
+            rotation = clusters[cluster_name][0].rotation
+            average_pose = math_helpers.SE3Pose(x, y, z, rotation)
+            averaged_cluster[cluster_name] = average_pose
+        return averaged_cluster
+
+
 
     def __thread_start_object_detection(self):
-
+        self.thread_running = True
         objects = []
         index = 0
         while True:
@@ -84,11 +104,12 @@ class VisionModel:
                 kmeans_f = open("kmeans_model.pkl","wb")
                 # write the python object (dict) to pickle file
                 self.clusters, self.kmeans_model = self.__kmeans_cluster(objects)
-
+                self.clusters = self._find_cluster_averages(self.clusters)
                 pickle.dump(self.clusters, clusters_f)
                 pickle.dump(self.kmeans_model, kmeans_f)
                 clusters_f.close()
                 kmeans_f.close()
+                self.thread_running = False
                 break
             for l in self.labels:
                 best_obj, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(l)
