@@ -68,7 +68,9 @@ class FetchModel:
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
 
             prediction = self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y, seed_tform_obj.z]])[0]
-
+            if dogtoy is None:
+                # Didn't find anything, keep searching.
+                continue
             if str(prediction) not in cluster_name:
                 print(str(prediction))
                 print(cluster_name)
@@ -78,9 +80,7 @@ class FetchModel:
 
             print("3")
             #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
-            if dogtoy is None:
-                # Didn't find anything, keep searching.
-                continue
+            
 
             # Detected Object. Request pick up.
 

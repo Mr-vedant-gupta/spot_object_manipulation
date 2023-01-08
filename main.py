@@ -100,6 +100,7 @@ class GraphNavInterface(object):
             '10': self._navigate_all,
             '11': self._list_objects,
             '12': self._navigate_to_object,
+            '13': self._manipulate_object,
             '14': self._upload_clusters
         }
 
@@ -161,15 +162,14 @@ class GraphNavInterface(object):
             vision_tform_goal = vision_tform_seed * seed_T_goal 
             self.fetch_model.move_robot_to_location(vision_tform_goal)
 
-            label = None
-
-            if "door_handle" in args[0][0]:
-                label = "door_handle"
-            else:
-                label = "handle"
-
-                
-            self.fetch_model.run_fetch(label, args[0][0])
+    def _manipulate_object(self, *args):
+        self.navigate_to_object(args)
+        label = None
+        if "door_handle" in args[0][0]:
+            label = "door_handle"
+        else:
+            label = "handle"        
+        self.fetch_model.run_fetch(label, args[0][0])
 
 
 
