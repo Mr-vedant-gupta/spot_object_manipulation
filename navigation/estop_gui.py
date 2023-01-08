@@ -4,6 +4,8 @@
 # is subject to the terms and conditions of the Boston Dynamics Software
 # Development Kit License (20191101-BDSDK-SL).
 
+
+
 """Provides a very visible button to click to stop the robot."""
 from __future__ import print_function
 
@@ -43,6 +45,7 @@ STOP_BUTTON_STYLESHEET = ("background-color: red; font: bold 60px; border-width:
 RELEASE_BUTTON_STYLESHEET = ("background-color: green; border-width: 5px; border-radius:20px; "
                              "padding: 10px")
 ERROR_LABEL_STYLESHEET = 'font: bold 15px'
+HOSTNAME = "138.16.161.22"
 
 
 class EstopGui(QtWidgets.QMainWindow):
@@ -222,16 +225,16 @@ def run_app(qt_app, button_window):
     return retcode
 
 
-def build_and_run_app(hostname, estop_client, options):
+def build_and_run_app(hostname, estop_client):
     qt_app, button_window = build_app(hostname, estop_client, options.timeout)
     if qt_app is None or button_window is None:
         exit(1)
 
     # Set some Qt flags for our GUI behavior.
-    if options.on_top:
-        button_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
-    if options.start_minimized:
-        button_window.setWindowState(QtCore.Qt.WindowMinimized)
+    # if options.on_top:
+    button_window.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+    # if options.start_minimized:
+    #     button_window.setWindowState(QtCore.Qt.WindowMinimized)
 
     def sigint_handler(sig, frame):
         """Cleanly shut down the application on signal."""
@@ -253,25 +256,25 @@ def build_and_run_app(hostname, estop_client, options):
 
 
 def main(argv):
-    parser = argparse.ArgumentParser()
-    bosdyn.client.util.add_base_arguments(parser)
-    parser.add_argument('-t', '--timeout', default=5, type=float, help='Timeout in seconds')
-    parser.add_argument('--no-on-top', help='Allow window to be hidden.', dest='on_top',
-                        action='store_false', default=True)
-    parser.add_argument('--start-minimized', help='Start the window minimized.',
-                        dest='start_minimized', action='store_true', default=False)
-    options = parser.parse_args(argv)
-    bosdyn.client.util.setup_logging(options.verbose)
+    # parser = argparse.ArgumentParser()
+    # bosdyn.client.util.add_base_arguments(parser)
+    # parser.add_argument('-t', '--timeout', default=5, type=float, help='Timeout in seconds')
+    # parser.add_argument('--no-on-top', help='Allow window to be hidden.', dest='on_top',
+    #                     action='store_false', default=True)
+    # parser.add_argument('--start-minimized', help='Start the window minimized.',
+    #                     dest='start_minimized', action='store_true', default=False)
+    # options = parser.parse_args(argv)
+    # bosdyn.client.util.setup_logging(options.verbose)
 
     # Create robot object
     sdk = bosdyn.client.create_standard_sdk('estop_gui')
-    robot = sdk.create_robot(options.hostname)
+    robot = sdk.create_robot(HOSTNAME)
     bosdyn.client.util.authenticate(robot)
 
     # Create estop client for the robot
     estop_client = robot.ensure_client(EstopClient.default_service_name)
 
-    exit(build_and_run_app(options.hostname, estop_client, options))
+    exit(build_and_run_app(HOSTNAME, estop_client))
 
 
 if __name__ == '__main__':
