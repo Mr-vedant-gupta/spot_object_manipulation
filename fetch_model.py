@@ -66,7 +66,9 @@ class FetchModel:
             print("2")
             # Capture an image and run ML on it.
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
-
+            if dogtoy is None:
+                # Didn't find anything, keep searching.
+                continue
             prediction = self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y, seed_tform_obj.z]])[0]
             if dogtoy is None:
                 # Didn't find anything, keep searching.

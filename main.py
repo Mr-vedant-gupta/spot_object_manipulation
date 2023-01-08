@@ -33,11 +33,14 @@ from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client.robot_command import RobotCommandClient, blocking_stand
 from bosdyn.geometry import EulerZXY
 from bosdyn.client.robot_command import RobotCommandBuilder
+from navigation import estop_gui
 
 HOSTNAME = "138.16.161.22"
-UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
+#UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
+UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
-
+BOSDYN_CLIENT_USERNAME = "user"
+BOSDYN_CLIENT_PASSWORD = "dungnydsc8su"
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
 
@@ -580,8 +583,7 @@ class GraphNavInterface(object):
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
             if dogtoy is not None:
                 #check if distance is within threshold
-                distance = 
-                    (seed_tform_obj.position.x - self.loc.position.x)**2 + \
+                distance = (seed_tform_obj.position.x - self.loc.position.x)**2 + \
                     (seed_tform_obj.position.y - self.loc.position.y)**2 + \
                     (seed_tform_obj.position.z - self.loc.position.z)**2 
                 if distance < THRESHOLD:
@@ -616,13 +618,13 @@ class GraphNavInterface(object):
             self.obj_found = False
             self.thread_running = True
             self.loc = clusters[cluster]
-            self.thread = Thread(target = self._look_for_obj)
+            Thread(target = self._look_for_obj).start()
             command_client = robot.ensure_client(RobotCommandClient.default_service_name)
             footprint_R_body = EulerZXY(yaw=0.4, roll=0.4, pitch=0.4)
             cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.2)
             command_client.robot_command(cmd)
             self.thread_running = False
-            while self.thread_stopped = False:
+            while self.thread_stopped == False:
                 time.sleep(0.5)
             if self.obj_found:
                 new_clusters[cluster] = clusters[cluster]
@@ -700,7 +702,8 @@ class GraphNavInterface(object):
 
 def main(argv):
     """Run the command-line interface."""
-
+    os.system('python navigation/estop_gui.py')
+    #Thread(target=estop_gui.main).start()
     # Setup and authenticate the robot.
     sdk = bosdyn.client.create_standard_sdk('GraphNavClient')
     sdk.register_service_client(NetworkComputeBridgeClient)

@@ -226,7 +226,7 @@ def run_app(qt_app, button_window):
 
 
 def build_and_run_app(hostname, estop_client):
-    qt_app, button_window = build_app(hostname, estop_client, options.timeout)
+    qt_app, button_window = build_app(hostname, estop_client, 5)
     if qt_app is None or button_window is None:
         exit(1)
 
@@ -255,7 +255,7 @@ def build_and_run_app(hostname, estop_client):
     return run_app(qt_app, button_window)
 
 
-def main(argv):
+def main():
     # parser = argparse.ArgumentParser()
     # bosdyn.client.util.add_base_arguments(parser)
     # parser.add_argument('-t', '--timeout', default=5, type=float, help='Timeout in seconds')
@@ -278,5 +278,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    if not main(sys.argv[1:]):
-        sys.exit(1)
+    main()
