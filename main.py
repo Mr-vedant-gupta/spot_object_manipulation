@@ -166,7 +166,7 @@ class GraphNavInterface(object):
             self.fetch_model.move_robot_to_location(vision_tform_goal)
 
     def _manipulate_object(self, *args):
-        self.navigate_to_object(args)
+        self._navigate_to_object(args)
         label = None
         if "door_handle" in args[0][0]:
             label = "door_handle"
@@ -585,7 +585,8 @@ class GraphNavInterface(object):
                 #check if distance is within threshold
                 distance = (seed_tform_obj.position.x - self.loc.position.x)**2 + \
                     (seed_tform_obj.position.y - self.loc.position.y)**2 + \
-                    (seed_tform_obj.position.z - self.loc.position.z)**2 
+                    (seed_tform_obj.position.z - self.loc.position.z)**2
+                print("distance: ", distance)
                 if distance < THRESHOLD:
                     self.obj_found = True
                     self.thread_stopped = True
@@ -599,9 +600,13 @@ class GraphNavInterface(object):
     def _navigate_all(self, *args):
         self._list_graph_waypoint_and_edge_ids([])
         waypoints = list(self._current_annotation_name_to_wp_id.values())
-
+        if waypoints == []:
+            print("waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
+            return
         self.vision_model.start_object_detection()
-        for i in range(3):
+        #To-do: increase this (reduced for testing purposes)
+        for i in range(1):
+            print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
             for waypoint in waypoints:
                 self._navigate_to([waypoint])
         self.vision_model.stop_object_detection()
@@ -613,6 +618,7 @@ class GraphNavInterface(object):
         new_clusters = {}
         for cluster in clusters:
             label = cluster[cluster.find("__") + 2:]
+            print("label: ", label)
             self._navigate_to_object([cluster])
             self.label = label
             self.obj_found = False

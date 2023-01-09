@@ -51,9 +51,11 @@ class VisionModel:
         min_score = 10000
 
         best_kmeans = None
+        print("objects array: ", objects)
 
         # determine best k value
         for i in range(2, len(objects)):
+            print(i, X)
             kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
             score = silhouette_score(X, kmeans.labels_)
 
@@ -62,6 +64,8 @@ class VisionModel:
                 min_score = score
 
         # add objects to their proper cluster dictionary key name
+        print("min score, best_km: ", min_score, best_kmeans)
+
         for i,label in enumerate(best_kmeans.labels_):
             cluster_name = "object_" + str(label) + "__" + y[i] #adding two dashes before label name so that it can be extracted easily
 
