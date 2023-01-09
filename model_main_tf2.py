@@ -72,9 +72,14 @@ FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
+  import tensorflow as tf1
+  config = tf1.compat.v1.ConfigProto(gpu_options = tf1.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.8))
+  config.gpu_options.allow_growth = True
+  session = tf1.compat.v1.Session(config=config)
+  tf1.compat.v1.keras.backend.set_session(session)
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
-  tf.config.set_soft_device_placement(True)
+  tf1.config.set_soft_device_placement(True)
 
   if FLAGS.checkpoint_dir:
     model_lib_v2.eval_continuously(
