@@ -1,0 +1,26 @@
+<annotation>
+	<folder>images</folder>
+	<filename>frontleft_fisheye_image_0154.jpg</filename>
+	<path>/home/sergio/classes/Lab/spot_object_manipulation/handle/images/frontleft_fisheye_image_0154.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>480</width>
+		<height>640</height>
+		<depth>1</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>coffee_pot</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>101</xmin>
+			<ymin>106</ymin>
+			<xmax>152</xmax>
+			<ymax>196</ymax>
+		</bndbox>
+	</object>
+</annotation>
