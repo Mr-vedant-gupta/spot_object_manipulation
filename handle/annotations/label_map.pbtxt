@@ -1,8 +1,12 @@
 item {
     id: 1
-    name: 'handle'
+    name: 'drawer'
 }
 item {
     id: 2
     name: 'door_handle'
+}
+item {
+    id: 3
+    name: 'coffee_pot'
 }
