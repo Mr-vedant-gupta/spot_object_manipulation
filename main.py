@@ -36,7 +36,7 @@ from bosdyn.client.robot_command import RobotCommandBuilder
 from navigation import estop_gui
 
 HOSTNAME = "138.16.161.22"
-UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
 #UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 BOSDYN_CLIENT_USERNAME = "user"
