@@ -162,8 +162,13 @@ class VisionModel:
             process_img_req = network_compute_bridge_pb2.NetworkComputeRequest(
                 input_data=input_data, server_config=server_data)
 
-            resp = self.network_compute_client.network_compute_bridge_command(
-                process_img_req)
+            try:
+                resp = self.network_compute_client.network_compute_bridge_command(
+                    process_img_req)
+            except Exception as e:
+                #print(e)
+                #print("Moving on!")
+                continue
 
             best_obj = None
             highest_conf = 0.0
