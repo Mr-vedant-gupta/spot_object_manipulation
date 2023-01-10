@@ -34,7 +34,7 @@ class VisionModel:
         self.kill_thread = False
 
         #TODO: dont use magic strings
-        self.labels = ["door_handle","handle"]
+        self.labels = ["door_handle","drawer","coffee_pot"]
 
         self.load_model(None)
     def load_model(self,path):
@@ -103,22 +103,30 @@ class VisionModel:
         index = 0
         while True:
             if self.kill_thread:
+
                 # create a binary pickle file 
                 clusters_f = open("clusters.pkl","wb")
                 kmeans_f = open("kmeans_model.pkl","wb")
+
                 # write the python object (dict) to pickle file
                 self.clusters, self.kmeans_model = self.__kmeans_cluster(objects)
                 self.clusters = self._find_cluster_averages(self.clusters)
+
                 pickle.dump(self.clusters, clusters_f)
                 pickle.dump(self.kmeans_model, kmeans_f)
+
                 clusters_f.close()
                 kmeans_f.close()
+
                 self.thread_running = False
                 break
             for l in self.labels:
                 best_obj, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(l)
 
                 if seed_tform_obj is not None:
+
+                    print("Found " + l +" while searching")
+
                     objects.append((l,seed_tform_obj))
                     index += 1
 
@@ -164,13 +172,15 @@ class VisionModel:
             img = self.get_bounding_box_image(resp)
             image_full = resp.image_response
 
-            # Show the image
-            cv2.imshow("Object", img)
-            cv2.waitKey(15)
 
             if len(resp.object_in_image) > 0:
+                # Show the image
+                cv2.imshow("Object", img)
+                cv2.waitKey(15)
                 for obj in resp.object_in_image:
                     # Get the label
+                    print("TESTING!!!!")
+                    print(obj.name)
                     obj_label = obj.name.split('_label_')[-1]
                     if obj_label != label:
                         continue

@@ -36,8 +36,8 @@ from bosdyn.client.robot_command import RobotCommandBuilder
 from navigation import estop_gui
 
 HOSTNAME = "138.16.161.22"
-#UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
-UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
+UPLOAD_FILEPATH = "/home/sergio/classes/Lab/spot_object_manipulation/navigation/maps/downloaded_graph"
+#UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 BOSDYN_CLIENT_USERNAME = "user"
 BOSDYN_CLIENT_PASSWORD = "dungnydsc8su"
@@ -168,10 +168,15 @@ class GraphNavInterface(object):
     def _manipulate_object(self, *args):
         self._navigate_to_object(args)
         label = None
+
         if "door_handle" in args[0][0]:
             label = "door_handle"
+
+        elif "drawer" in args[0][0]:
+            label = "drawer"        
+
         else:
-            label = "handle"        
+            label = "coffee_pot"
         self.fetch_model.run_fetch(label, args[0][0])
 
 
@@ -598,20 +603,30 @@ class GraphNavInterface(object):
 
 
     def _navigate_all(self, *args):
+
         self._list_graph_waypoint_and_edge_ids([])
+
         waypoints = list(self._current_annotation_name_to_wp_id.values())
+
         if waypoints == []:
             print("waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
             return
+
         self.vision_model.start_object_detection()
-        #To-do: increase this (reduced for testing purposes)
+
+        #TODO: increase this (reduced for testing purposes)
         for i in range(1):
+
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
+
             for waypoint in waypoints:
                 self._navigate_to([waypoint])
+
         self.vision_model.stop_object_detection()
+
         while self.vision_model.thread_running: # wait for the thread to finish up
             time.sleep(1) 
+
         #check if each cluster is valid
         print("validating each cluster")
         clusters = self.vision_model.clusters
@@ -708,7 +723,7 @@ class GraphNavInterface(object):
 
 def main(argv):
     """Run the command-line interface."""
-    os.system('python navigation/estop_gui.py')
+    #os.system('python navigation/estop_gui.py')
     #Thread(target=estop_gui.main).start()
     # Setup and authenticate the robot.
     sdk = bosdyn.client.create_standard_sdk('GraphNavClient')

@@ -21,13 +21,13 @@ from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 
 def grasp_directions(object):
-    if object == "handle":
+    if object == "drawer":
         return geometry_pb2.Vec3(x=0, y=1, z=0), geometry_pb2.Vec3(x=0, y=0, z=1)
     else:
         raise Exception("Invalid object name")
 
 def task_constructor(object):
-    if object == "handle":
+    if object == "drawer":
         return construct_drawer_task(-VELOCITY, force_limit=FORCE_LIMIT), construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
     else:
         raise Exception("Invalid object name")

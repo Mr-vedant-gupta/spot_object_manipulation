@@ -104,7 +104,7 @@ class FetchModel:
                 print("6")
                 print("DOOR HANDLE")
                 execute_open_door(self.robot,self.vision_model.image_sources, source, center_px_x, center_px_y, image)
-            if label =="handle":
+            if label =="drawer":
                 print("7")
                 print("DRAWER")
                 #execute_open_drawer(self.robot, source, center_px_x, center_px_y, image)
