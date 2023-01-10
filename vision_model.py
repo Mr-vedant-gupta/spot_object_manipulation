@@ -184,8 +184,6 @@ class VisionModel:
                 cv2.waitKey(15)
                 for obj in resp.object_in_image:
                     # Get the label
-                    print("TESTING!!!!")
-                    print(obj.name)
                     obj_label = obj.name.split('_label_')[-1]
                     if obj_label != label:
                         continue

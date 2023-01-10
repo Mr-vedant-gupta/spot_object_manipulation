@@ -144,26 +144,54 @@ class GraphNavInterface(object):
             print(args[0][0] + " not in clusters.")
             return
 
+        dummy_quat = Quat(w=float(1), x=float(0), y=float(0),z=float(0))
+
         seed_T_goal = self.vision_model.clusters[args[0][0]][0] #the list will only have one element
+        seed_T_goal.rot = dummy_quat
+
+        goal_tform_pose = SE3Pose(1, 0, 0, dummy_quat)
+
+        seed_tform_pose = seed_T_goal * goal_tform_pose
+
 
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
             return
 
-        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
-        body_tform_vision = vision_tform_body.inverse()
+        nav_to_cmd_id = None
+        # Navigate to the destination.
+        is_finished = False
+        while not is_finished:
+            # Issue the navigation command about twice a second such that it is easy to terminate the
+            # navigation command (with estop or killing the program).
+            try:
+                nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
+                    seed_tform_pose.to_proto(), 1.0, command_id=nav_to_cmd_id)
+            except ResponseError as e:
+                print("Error while navigating {}".format(e))
+                break
+            time.sleep(.5)  # Sleep for half a second to allow for command execution.
+            # Poll the robot for feedback to determine if the navigation command is complete. Then sit
+            # the robot down once it is finished.
+            is_finished = self._check_success(nav_to_cmd_id)
 
-        localization_state = self._graph_nav_client.get_localization_state()
-        seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
-        if seed_tform_body == None:
-            print("Forgot to upload map")
-        else:
+        ## DELETE
 
-            seed_tform_vision = seed_tform_body * body_tform_vision
-            vision_tform_seed = seed_tform_vision.inverse()
-            vision_tform_goal = vision_tform_seed * seed_T_goal 
-            self.fetch_model.move_robot_to_location(vision_tform_goal)
+        # vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
+        # body_tform_vision = vision_tform_body.inverse()
+        #
+        # localization_state = self._graph_nav_client.get_localization_state()
+        # seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
+        #
+        # if seed_tform_body == None:
+        #     print("Forgot to upload map")
+        # else:
+        #
+        #     seed_tform_vision = seed_tform_body * body_tform_vision
+        #     vision_tform_seed = seed_tform_vision.inverse()
+        #     vision_tform_goal = vision_tform_seed * seed_T_goal 
+        #     self.fetch_model.move_robot_to_location(vision_tform_goal)
 
     def _manipulate_object(self, *args):
         self._navigate_to_object(args)
