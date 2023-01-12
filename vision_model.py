@@ -78,7 +78,7 @@ class VisionModel:
 
         return clusters, best_kmeans
     
-    def _find_cluster_averages(clusters):
+    def _find_cluster_averages(self, clusters):
         averaged_cluster = {}
         for cluster_name in clusters:
             n = len(clusters[cluster_name])
@@ -92,7 +92,7 @@ class VisionModel:
             #pick rotation value randomly from one of the SE3Poses
             rotation = clusters[cluster_name][0].rotation
             average_pose = math_helpers.SE3Pose(x, y, z, rotation)
-            averaged_cluster[cluster_name] = average_pose
+            averaged_cluster[cluster_name] = [average_pose]
         return averaged_cluster
 
 

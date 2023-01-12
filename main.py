@@ -139,59 +139,61 @@ class GraphNavInterface(object):
             # If no object name is given as input, then return without requesting navigation.
             print("No object provided as a destination for navigate to.")
             return
+        print("aa")
 
         if not args[0][0] in self.vision_model.clusters.keys():
             print(args[0][0] + " not in clusters.")
             return
 
-        dummy_quat = Quat(w=float(1), x=float(0), y=float(0),z=float(0))
-
+        # dummy_quat = Quat(w=float(1), x=float(0), y=float(0),z=float(0))
+        print("ab")
+        print(self.vision_model.clusters[args[0][0]])
         seed_T_goal = self.vision_model.clusters[args[0][0]][0] #the list will only have one element
-        seed_T_goal.rot = dummy_quat
+        # seed_T_goal.rot = dummy_quat
 
-        goal_tform_pose = SE3Pose(1, 0, 0, dummy_quat)
+        # goal_tform_pose = SE3Pose(1, 0, 0, dummy_quat)
 
-        seed_tform_pose = seed_T_goal * goal_tform_pose
+        # seed_tform_pose = seed_T_goal * goal_tform_pose
 
-
+        print("ac")
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
             return
 
-        nav_to_cmd_id = None
-        # Navigate to the destination.
-        is_finished = False
-        while not is_finished:
-            # Issue the navigation command about twice a second such that it is easy to terminate the
-            # navigation command (with estop or killing the program).
-            try:
-                nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
-                    seed_tform_pose.to_proto(), 1.0, command_id=nav_to_cmd_id)
-            except ResponseError as e:
-                print("Error while navigating {}".format(e))
-                break
-            time.sleep(.5)  # Sleep for half a second to allow for command execution.
-            # Poll the robot for feedback to determine if the navigation command is complete. Then sit
-            # the robot down once it is finished.
-            is_finished = self._check_success(nav_to_cmd_id)
+        # nav_to_cmd_id = None
+        # # Navigate to the destination.
+        # is_finished = False
+        # while not is_finished:
+        #     # Issue the navigation command about twice a second such that it is easy to terminate the
+        #     # navigation command (with estop or killing the program).
+        #     try:
+        #         nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
+        #             seed_tform_pose.to_proto(), 1.0, command_id=nav_to_cmd_id)
+        #     except ResponseError as e:
+        #         print("Error while navigating {}".format(e))
+        #         break
+        #     time.sleep(.5)  # Sleep for half a second to allow for command execution.
+        #     # Poll the robot for feedback to determine if the navigation command is complete. Then sit
+        #     # the robot down once it is finished.
+        #     is_finished = self._check_success(nav_to_cmd_id)
 
+        print("ad")
+        ## USING OLD CODE, NEW CODE COMMENTED OUT
 
-        ## DELETE
-
-        # vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
-        # body_tform_vision = vision_tform_body.inverse()
-        #
-        # localization_state = self._graph_nav_client.get_localization_state()
-        # seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
-        #
-        # if seed_tform_body == None:
-        #     print("Forgot to upload map")
-        # else:
-        #
-        #     seed_tform_vision = seed_tform_body * body_tform_vision
-        #     vision_tform_seed = seed_tform_vision.inverse()
-        #     vision_tform_goal = vision_tform_seed * seed_T_goal 
-        #     self.fetch_model.move_robot_to_location(vision_tform_goal)
+        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
+        body_tform_vision = vision_tform_body.inverse()
+        print("ae")
+        localization_state = self._graph_nav_client.get_localization_state()
+        seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
+        
+        if seed_tform_body == None:
+            print("Forgot to upload map")
+        else:
+        
+            seed_tform_vision = seed_tform_body * body_tform_vision
+            vision_tform_seed = seed_tform_vision.inverse()
+            vision_tform_goal = vision_tform_seed * seed_T_goal 
+            self.fetch_model.move_robot_to_location(vision_tform_goal)
 
     def _manipulate_object(self, *args):
         self._navigate_to_object(args)
@@ -616,6 +618,7 @@ class GraphNavInterface(object):
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
             if dogtoy is not None:
                 #check if distance is within threshold
+                print("a")
                 distance = (seed_tform_obj.position.x - self.loc.position.x)**2 + \
                     (seed_tform_obj.position.y - self.loc.position.y)**2 + \
                     (seed_tform_obj.position.z - self.loc.position.z)**2
@@ -647,7 +650,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints:
+            for waypoint in waypoints[:3]:
                 self._navigate_to([waypoint])
 
         self.vision_model.stop_object_detection()
@@ -662,13 +665,16 @@ class GraphNavInterface(object):
         for cluster in clusters:
             label = cluster[cluster.find("__") + 2:]
             print("label: ", label)
+            print(1)
             self._navigate_to_object([cluster])
             self.label = label
             self.obj_found = False
             self.thread_running = True
             self.loc = clusters[cluster]
+            print(2)
             Thread(target = self._look_for_obj).start()
             command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+            print(3)
             footprint_R_body = EulerZXY(yaw=0.4, roll=0.4, pitch=0.4)
             cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.2)
             command_client.robot_command(cmd)
