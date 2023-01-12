@@ -33,6 +33,8 @@ from bosdyn.client.robot_state import RobotStateClient
 from bosdyn.client.robot_command import RobotCommandClient, blocking_stand
 from bosdyn.geometry import EulerZXY
 from bosdyn.client.robot_command import RobotCommandBuilder
+from bosdyn.api import world_object_pb2
+from bosdyn.client.world_object import WorldObjectClient
 from navigation import estop_gui
 
 HOSTNAME = "138.16.161.22"
@@ -104,8 +106,38 @@ class GraphNavInterface(object):
             '11': self._list_objects,
             '12': self._navigate_to_object,
             '13': self._manipulate_object,
-            '14': self._upload_clusters
+            '14': self._upload_clusters,
+            '15': self._go_to_fiducial
         }
+
+    def _go_to_fiducial(self, *args):
+        localization_state = self._graph_nav_client.get_localization_state()
+        seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
+
+        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
+        body_tform_vision = vision_tform_body.inverse()
+
+        seed_tform_vision = seed_tform_body * body_tform_vision
+
+        print("Seed_tform_body:",seed_tform_body)
+        world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
+        # Get all fiducial objects (an object of a specific type).
+        request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
+        fiducial_objects = world_object_client.list_world_objects(
+            object_type=request_fiducials).world_objects
+
+        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map['filtered_fiducial_523'].parent_tform_child
+        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+
+        seed_tform_fiducial = seed_tform_vision * vision_tform_fiducial
+
+        fiducial_tform_goto = SE3Pose(0,0,1,Quat())
+        seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
+
+        print("Seed tform fiducial",seed_tform_fiducial)
+        print("Seed tform goto:",seed_tform_goto)
+
+        self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _list_objects(self, *args):
         if self.vision_model.clusters is None:
@@ -733,6 +765,7 @@ class GraphNavInterface(object):
             (12) Move To Object.
             (13) Manipulate Object.
             (14) Upload Clusters.
+            (15) Align Along Fiducial
             (q) Exit.
             """)
             try:
