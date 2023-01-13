@@ -59,11 +59,9 @@ class FetchModel:
 
         #with bosdyn.client.lease.LeaseKeepAlive(self.lease_client, must_acquire=True, return_at_exit=True):
 
-        print("1")
         grasp_completed = False
         while not grasp_completed:
 
-            print("2")
             # Capture an image and run ML on it.
             dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
             if dogtoy is None:
@@ -74,13 +72,10 @@ class FetchModel:
                 # Didn't find anything, keep searching.
                 continue
             if str(prediction) not in cluster_name:
-                print(str(prediction))
-                print(cluster_name)
                 print("what we see does not match cluster")
                 continue
 
 
-            print("3")
             #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
             
 
@@ -91,7 +86,6 @@ class FetchModel:
             self.robot_command_client.robot_command(stow_cmd)
 
 
-            print("4")
             self.move_robot_to_location(vision_tform_dogtoy)
 
             # The ML result is a bounding box.  Find the center.
@@ -99,15 +93,11 @@ class FetchModel:
              center_px_y) = self.vision_model.find_center_px(dogtoy.image_properties.coordinates)
 
             
-            print("5")
             if label =="door_handle":
-                print("6")
                 print("DOOR HANDLE")
                 execute_open_door(self.robot,self.vision_model.image_sources, source, center_px_x, center_px_y, image)
-            if label =="drawer":
-                print("7")
-                print("DRAWER")
-                #execute_open_drawer(self.robot, source, center_px_x, center_px_y, image)
+            if label =="drawer" or label == "coffee_cup":
+
                 # Request Pick Up on that pixel.
                 pick_vec = geometry_pb2.Vec2(x=center_px_x, y=center_px_y)
                 grasp = manipulation_api_pb2.PickObjectInImage(
@@ -132,7 +122,6 @@ class FetchModel:
 
                 # The axis in the vision frame is the negative z-axis
                 
-
                 # Add the vector constraint to our proto.
                 constraint = grasp.grasp_params.allowable_orientation.add()
                 constraint.vector_alignment_with_tolerance.axis_on_gripper_ewrt_gripper.CopyFrom(
@@ -197,32 +186,41 @@ class FetchModel:
                     continue
 
                 # Move the arm to a carry position.
-                print('Grasp finished, search for a person...')
-            
-                #carry_cmd = RobotCommandBuilder.arm_carry_command()
-                command = construct_drawer_task(-VELOCITY, force_limit=FORCE_LIMIT)
-                # command_client.robot_command(command)
-                command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
-                    self.robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
-                self.robot_command_client.robot_command_async(command)
 
-                # Wait for the carry command to finish
-                print("Finished action 1")
-                time.sleep(2)
+                if label == "coffee_cup":
+                    carry_cmd = RobotCommandBuilder.arm_carry_command()
+                    self.robot_command_client.robot_command_async(carry_cmd)
 
-                command = construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
-                # command_client.robot_command(command)
-                command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
-                    self.robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
-                self.robot_command_client.robot_command_async(command)
+                    time.sleep(2)
+                    print ("Finished carrying coffe cup.")
 
-                print("Finished action 2")
+                else :
 
-                time.sleep(2)
+                    command = construct_drawer_task(-VELOCITY, force_limit=FORCE_LIMIT)
+                    command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
+                        self.robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
+                    self.robot_command_client.robot_command_async(command)
 
-                # Stow the arm in case it is deployed
-                stow_cmd = RobotCommandBuilder.arm_stow_command()
-                self.robot_command_client.robot_command(stow_cmd)
+                    # Wait for the carry command to finish
+                    time.sleep(2)
+                    print("Finished opening drawer")
+
+                    command = construct_drawer_task(VELOCITY, force_limit=FORCE_LIMIT)
+                    # command_client.robot_command(command)
+                    command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
+                        self.robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
+                    self.robot_command_client.robot_command_async(command)
+
+
+                    time.sleep(2)
+                    print("Finished closing drawer")
+
+                    # Stow the arm in case it is deployed
+                    stow_cmd = RobotCommandBuilder.arm_stow_command()
+                    self.robot_command_client.robot_command_async(stow_cmd)
+
+                    time.sleep(2)
+                    print("Finished stowing arm")
 
 def main(argv):
 
