@@ -10,3 +10,7 @@ item {
     id: 3
     name: 'coffee_pot'
 }
+item {
+    id: 4
+    name: 'coffee_cup'
+}

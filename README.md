@@ -17,6 +17,8 @@ python model_main_tf2.py --model_dir=handle/models/my_ssd_resnet50_v1_fpn --pipe
 
 tensorboard --logdir=handle/models --bind_all
 
+CUDA_VISIBLE_DEVICES="-1" python model_main_tf2.py --model_dir=handle/models/my_ssd_resnet50_v1_fpn --pipeline_config_path=handle/models/my_ssd_resnet50_v1_fpn/pipeline.config --checkpoint_dir=handle/models/my_ssd_resnet50_v1_fpn
+
 python exporter_main_v2.py --input_type image_tensor --pipeline_config_path handle/models/my_ssd_resnet50_v1_fpn/pipeline.config --trained_checkpoint_dir handle/models/my_ssd_resnet50_v1_fpn/ --output_directory handle/exported-models/handle-model
 
 python eval.py -i handle/images -m handle/exported-models/handle-model/saved_model -l handle/annotations/label_map.pbtxt -o handle/output
