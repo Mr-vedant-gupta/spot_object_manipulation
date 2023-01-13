@@ -34,7 +34,7 @@ class VisionModel:
         self.kill_thread = False
 
         #TODO: dont use magic strings
-        self.labels = ["door_handle","drawer","coffee_pot"]
+        self.labels = ["door_handle","drawer","coffee_pot","coffee_cup"]
 
         self.load_model(None)
     def load_model(self,path):
