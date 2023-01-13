@@ -48,7 +48,7 @@ class VisionModel:
         X = np.array([[o[1].x, o[1].y, o[1].z] for o in objects])
         y = [o[0] for o in objects] 
 
-        min_score = 10000
+        min_score = math.inf
 
         best_kmeans = None
         print("objects array: ", objects)
@@ -58,6 +58,7 @@ class VisionModel:
             print(i, X)
             kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
             score = silhouette_score(X, kmeans.labels_)
+            print("score: ", score)
 
             if score < min_score:
                 best_kmeans = kmeans

@@ -658,8 +658,8 @@ class GraphNavInterface(object):
         self.thread_stopped = False
         THRESHOLD = 4
         while self.thread_running:
-
-            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
+            print("in while loop, thread running is: ", self.thread_running)
+            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(self.label)
             if dogtoy is not None:
                 #check if distance is within threshold
                 print("a")
@@ -670,7 +670,9 @@ class GraphNavInterface(object):
                 if distance < THRESHOLD:
                     self.obj_found = True
                     self.thread_stopped = True
+                    print("going to break loop")
                     break
+        print("out of loop")
         self.thread_stopped = True
         
             
@@ -707,29 +709,32 @@ class GraphNavInterface(object):
         clusters = self.vision_model.clusters
         new_clusters = {}
         for cluster in clusters:
-            label = cluster[cluster.find("__") + 2:]
-            print("label: ", label)
+            self.label = cluster[cluster.find("__") + 2:]
             print(1)
             self._navigate_to_object([cluster])
-            self.label = label
+
             self.obj_found = False
             self.thread_running = True
             self.loc = clusters[cluster]
             print(2)
             Thread(target = self._look_for_obj).start()
-            command_client = robot.ensure_client(RobotCommandClient.default_service_name)
+            command_client = self._robot.ensure_client(RobotCommandClient.default_service_name)
             print(3)
-            footprint_R_body = EulerZXY(yaw=0.4, roll=0.4, pitch=0.4)
-            cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.2)
+            footprint_R_body = EulerZXY(yaw=100, roll=0, pitch=0)
+            cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.0)
             command_client.robot_command(cmd)
             self.thread_running = False
-            while self.thread_stopped == False:
-                time.sleep(0.5)
+            print("before while")
+            #commented out for testin purposes
+            # while not self.thread_stopped:
+            time.sleep(0.5)
+            print("after while")
             if self.obj_found:
                 new_clusters[cluster] = clusters[cluster]
             else:
                 print("No match found for ", cluster, ". This cluster will be discarded.")
         self.vision_model.clusters = new_clusters
+        print("the new clusters are: ", new_clusters)
         clusters_f = open("clusters.pkl","wb")
         pickle.dump(new_clusters, clusters_f)
         clusters_f.close()
