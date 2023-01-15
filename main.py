@@ -177,6 +177,7 @@ class GraphNavInterface(object):
             return
 
         seed_T_goal = self.vision_model.clusters[args[0][0]][0] #the list will only have one element
+        print(seed_T_goal.x, seed_T_goal.y, seed_T_goal.z)
 
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
@@ -240,7 +241,7 @@ class GraphNavInterface(object):
                     self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _manipulate_object(self, *args):
-        self._navigate_to_object(args)
+        #self._navigate_to_object(args)
         label = None
 
         if "door_handle" in args[0][0]:
@@ -249,6 +250,8 @@ class GraphNavInterface(object):
         elif "drawer" in args[0][0]:
             label = "drawer"        
 
+        elif "coffee_cup" in args[0][0]:
+            label = "coffee_cup"        
         else:
             label = "coffee_pot"
         self.fetch_model.run_fetch(label, args[0][0])
@@ -696,48 +699,48 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:3]:
+            for waypoint in waypoints[:10]:
                 self._navigate_to([waypoint])
 
         self.vision_model.stop_object_detection()
 
-        while self.vision_model.thread_running: # wait for the thread to finish up
-            time.sleep(1) 
-
-        #check if each cluster is valid
-        print("validating each cluster")
-        clusters = self.vision_model.clusters
-        new_clusters = {}
-        for cluster in clusters:
-            self.label = cluster[cluster.find("__") + 2:]
-            print(1)
-            self._navigate_to_object([cluster])
-
-            self.obj_found = False
-            self.thread_running = True
-            self.loc = clusters[cluster]
-            print(2)
-            Thread(target = self._look_for_obj).start()
-            command_client = self._robot.ensure_client(RobotCommandClient.default_service_name)
-            print(3)
-            footprint_R_body = EulerZXY(yaw=100, roll=0, pitch=0)
-            cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.0)
-            command_client.robot_command(cmd)
-            self.thread_running = False
-            print("before while")
-            #commented out for testin purposes
-            # while not self.thread_stopped:
-            time.sleep(0.5)
-            print("after while")
-            if self.obj_found:
-                new_clusters[cluster] = clusters[cluster]
-            else:
-                print("No match found for ", cluster, ". This cluster will be discarded.")
-        self.vision_model.clusters = new_clusters
-        print("the new clusters are: ", new_clusters)
-        clusters_f = open("clusters.pkl","wb")
-        pickle.dump(new_clusters, clusters_f)
-        clusters_f.close()
+        # while self.vision_model.thread_running: # wait for the thread to finish up
+        #     time.sleep(1) 
+        #
+        # #check if each cluster is valid
+        # print("validating each cluster")
+        # clusters = self.vision_model.clusters
+        # new_clusters = {}
+        # for cluster in clusters:
+        #     self.label = cluster[cluster.find("__") + 2:]
+        #     print(1)
+        #     self._navigate_to_object([cluster])
+        #
+        #     self.obj_found = False
+        #     self.thread_running = True
+        #     self.loc = clusters[cluster]
+        #     print(2)
+        #     Thread(target = self._look_for_obj).start()
+        #     command_client = self._robot.ensure_client(RobotCommandClient.default_service_name)
+        #     print(3)
+        #     footprint_R_body = EulerZXY(yaw=100, roll=0, pitch=0)
+        #     cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.0)
+        #     command_client.robot_command(cmd)
+        #     self.thread_running = False
+        #     print("before while")
+        #     #commented out for testin purposes
+        #     # while not self.thread_stopped:
+        #     time.sleep(0.5)
+        #     print("after while")
+        #     if self.obj_found:
+        #         new_clusters[cluster] = clusters[cluster]
+        #     else:
+        #         print("No match found for ", cluster, ". This cluster will be discarded.")
+        # self.vision_model.clusters = new_clusters
+        # print("the new clusters are: ", new_clusters)
+        # clusters_f = open("clusters.pkl","wb")
+        # pickle.dump(new_clusters, clusters_f)
+        # clusters_f.close()
 
 
 

@@ -51,21 +51,21 @@ class VisionModel:
         min_score = math.inf
 
         best_kmeans = None
-        print("objects array: ", objects)
+        #print("objects array: ", objects)
 
         # determine best k value
         for i in range(2, len(objects)):
-            print(i, X)
+            #print(i, X)
             kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
             score = silhouette_score(X, kmeans.labels_)
-            print("score: ", score)
+            #print("score: ", score)
 
             if score < min_score:
                 best_kmeans = kmeans
                 min_score = score
 
         # add objects to their proper cluster dictionary key name
-        print("min score, best_km: ", min_score, best_kmeans)
+        #print("min score, best_km: ", min_score, best_kmeans)
 
         for i,label in enumerate(best_kmeans.labels_):
             cluster_name = "object_" + str(label) + "__" + y[i] #adding two dashes before label name so that it can be extracted easily
@@ -111,7 +111,7 @@ class VisionModel:
 
                 # write the python object (dict) to pickle file
                 self.clusters, self.kmeans_model = self.__kmeans_cluster(objects)
-                self.clusters = self._find_cluster_averages(self.clusters)
+                #self.clusters = self._find_cluster_averages(self.clusters)
 
                 pickle.dump(self.clusters, clusters_f)
                 pickle.dump(self.kmeans_model, kmeans_f)
@@ -121,15 +121,15 @@ class VisionModel:
 
                 self.thread_running = False
                 break
-            for l in self.labels:
-                best_obj, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(l)
+            # for l in self.labels:
+            best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image()
 
-                if seed_tform_obj is not None:
+            if seed_tform_obj is not None:
 
-                    print("Found " + l +" while searching")
+                print("Found " + best_obj_label +" while searching")
 
-                    objects.append((l,seed_tform_obj))
-                    index += 1
+                objects.append((best_obj_label,seed_tform_obj))
+                index += 1
 
     def start_object_detection(self):
         self.kill_thread = False
@@ -139,7 +139,7 @@ class VisionModel:
     def stop_object_detection(self):
         self.kill_thread = True
 
-    def get_object_and_image(self, label):
+    def get_object_and_image(self):
         for source in self.image_sources:
             # Build a network compute request for this image source.
             image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
@@ -174,6 +174,7 @@ class VisionModel:
             best_obj = None
             highest_conf = 0.0
             best_vision_tform_obj = None
+            best_obj_label = None
 
             img = self.get_bounding_box_image(resp)
             image_full = resp.image_response
@@ -185,9 +186,9 @@ class VisionModel:
                 cv2.waitKey(15)
                 for obj in resp.object_in_image:
                     # Get the label
-                    obj_label = obj.name.split('_label_')[-1]
-                    if obj_label != label:
-                        continue
+                    # obj_label = obj.name.split('_label_')[-1]
+                    # if obj_label != label:
+                    #     continue
                     conf_msg = wrappers_pb2.FloatValue()
                     obj.additional_properties.Unpack(conf_msg)
                     conf = conf_msg.value
@@ -230,11 +231,12 @@ class VisionModel:
                         highest_conf = conf
                         best_obj = obj
                         best_vision_tform_obj = vision_tform_obj
+                        best_obj_label = best_obj.name.split('_label_')[-1]
 
             if best_obj is not None:
-                return best_obj, image_full, best_vision_tform_obj, seed_tform_obj, source
+                return best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source
 
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     def get_bounding_box_image(self, response):
         dtype = np.uint8

@@ -63,21 +63,18 @@ class FetchModel:
         while not grasp_completed:
 
             # Capture an image and run ML on it.
-            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(label)
-            if dogtoy is None:
+            best_obj, best_obj_label, image, vision_tform_obj, seed_tform_obj, source = self.vision_model.get_object_and_image()
+            if best_obj is None or not label == best_obj_label:
                 # Didn't find anything, keep searching.
                 continue
             prediction = self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y, seed_tform_obj.z]])[0]
-            if dogtoy is None:
+            if best_obj is None:
                 # Didn't find anything, keep searching.
                 continue
             if str(prediction) not in cluster_name:
                 print("what we see does not match cluster")
                 continue
 
-
-            #TODO: convert vision_tform_dogoty to global frame and compare it to seed_tform_obj
-            
 
             # Detected Object. Request pick up.
 
@@ -86,11 +83,11 @@ class FetchModel:
             self.robot_command_client.robot_command(stow_cmd)
 
 
-            self.move_robot_to_location(vision_tform_dogtoy)
+            self.move_robot_to_location(vision_tform_obj)
 
             # The ML result is a bounding box.  Find the center.
             (center_px_x,
-             center_px_y) = self.vision_model.find_center_px(dogtoy.image_properties.coordinates)
+             center_px_y) = self.vision_model.find_center_px(best_obj.image_properties.coordinates)
 
             
             if label =="door_handle":
@@ -188,6 +185,7 @@ class FetchModel:
                 # Move the arm to a carry position.
 
                 if label == "coffee_cup":
+                    print("COFFEE CUP")
                     carry_cmd = RobotCommandBuilder.arm_carry_command()
                     self.robot_command_client.robot_command_async(carry_cmd)
 
