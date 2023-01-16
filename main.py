@@ -39,12 +39,12 @@ from navigation import estop_gui
 from skills.pour_grinds import pour_grinds_integrated, close_lid_integrated
 
 
-HOSTNAME = "138.16.161.22"
-UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
+#HOSTNAME = "138.16.161.12"
+HOSTNAME = "192.168.80.3"
+#UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/cit121/downloaded_graph"
 #UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
-BOSDYN_CLIENT_USERNAME = "user"
-BOSDYN_CLIENT_PASSWORD = "dungnydsc8su"
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
 
@@ -221,8 +221,20 @@ class GraphNavInterface(object):
             print(args[0][0] + " not in clusters.")
             return
 
-        seed_T_goal = self.vision_model.clusters[args[0][0]][0] #the list will only have one element
-        print(seed_T_goal.x, seed_T_goal.y, seed_T_goal.z)
+        seed_T_goal = self.vision_model.clusters[args[0][0]][0]  # the list will only have one element
+        print("seed_T_goal:", seed_T_goal)
+        print(seed_T_goal[0], seed_T_goal[1])
+        x, y = seed_T_goal[0], seed_T_goal[1]
+
+        if len(args) == 3:
+            theta = args[0][1]
+            dist = args[0][2]
+            x = x + math.cos(theta)*dist
+            y = y + math.sin(theta)*dist
+
+
+
+
 
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
@@ -236,29 +248,25 @@ class GraphNavInterface(object):
             # Issue the navigation command about twice a second such that it is easy to terminate the
             # navigation command (with estop or killing the program).
             try:
-
-                nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
-                    seed_T_goal.to_proto(), 1.0, command_id=nav_to_cmd_id)
+                self._navigate_to_anchor([x, y])
+                return
+                #nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(
+                #    seed_T_goal.to_proto(), 1.0, command_id=nav_to_cmd_id)
 
             except ResponseError as e:
                 print("Error while navigating {}".format(e))
-                break
+                return False
 
             time.sleep(.5)  # Sleep for half a second to allow for command execution.
-
-            # Poll the robot for feedback to determine if the navigation command is complete. Then sit
-            # the robot down once it is finished.
-            is_finished = self._check_success(nav_to_cmd_id)
 
             localization_state = self._graph_nav_client.get_localization_state()
             seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
             distance = math.dist([seed_tform_body.x, seed_tform_body.y], [seed_T_goal.x, seed_T_goal.y])
 
-            if distance <= 2.0:
-                is_finished = True
-
-            if is_finished:
+            if not is_finished:
+                raise Exception("Not close enough, do something smarter here")
+            else:
 
                 # This needs to only work for objects that need a fiducial (something like the coffee pot)
                 if "coffee_pot" in args[0][0]:
@@ -286,8 +294,9 @@ class GraphNavInterface(object):
                     self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _manipulate_object(self, *args):
-        #self._navigate_to_object(args)
+        self._navigate_to_object(args)
         label = None
+        print("going to manipualte an object!")
 
         if "door_handle" in args[0][0]:
             label = "door_handle"
@@ -299,6 +308,7 @@ class GraphNavInterface(object):
             label = "coffee_cup"        
         else:
             label = "coffee_pot"
+        print("Object to manipulate:", label)
         self.fetch_model.run_fetch(label, args[0][0])
 
 
@@ -744,48 +754,50 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:10]:
+            for waypoint in waypoints[:25]:
                 self._navigate_to([waypoint])
 
+        print("Done searching, stopping vision model")
         self.vision_model.stop_object_detection()
+        print("Vision model stopped")
 
-        # while self.vision_model.thread_running: # wait for the thread to finish up
-        #     time.sleep(1) 
-        #
-        # #check if each cluster is valid
-        # print("validating each cluster")
-        # clusters = self.vision_model.clusters
-        # new_clusters = {}
-        # for cluster in clusters:
-        #     self.label = cluster[cluster.find("__") + 2:]
-        #     print(1)
-        #     self._navigate_to_object([cluster])
-        #
-        #     self.obj_found = False
-        #     self.thread_running = True
-        #     self.loc = clusters[cluster]
-        #     print(2)
-        #     Thread(target = self._look_for_obj).start()
-        #     command_client = self._robot.ensure_client(RobotCommandClient.default_service_name)
-        #     print(3)
-        #     footprint_R_body = EulerZXY(yaw=100, roll=0, pitch=0)
-        #     cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.0)
-        #     command_client.robot_command(cmd)
-        #     self.thread_running = False
-        #     print("before while")
-        #     #commented out for testin purposes
-        #     # while not self.thread_stopped:
-        #     time.sleep(0.5)
-        #     print("after while")
-        #     if self.obj_found:
-        #         new_clusters[cluster] = clusters[cluster]
-        #     else:
-        #         print("No match found for ", cluster, ". This cluster will be discarded.")
-        # self.vision_model.clusters = new_clusters
-        # print("the new clusters are: ", new_clusters)
-        # clusters_f = open("clusters.pkl","wb")
-        # pickle.dump(new_clusters, clusters_f)
-        # clusters_f.close()
+        while self.vision_model.thread_running: # wait for the thread to finish up
+            time.sleep(1)
+
+        #check if each cluster is valid
+        print("validating each cluster")
+        clusters = self.vision_model.clusters
+        new_clusters = {}
+        for cluster in clusters:
+            self.label = cluster[cluster.find("__") + 2:]
+            print(1)
+            self._navigate_to_object([cluster])
+
+            self.obj_found = False
+            self.thread_running = True
+            self.loc = clusters[cluster]
+            print(2)
+            Thread(target = self._look_for_obj).start()
+            command_client = self._robot.ensure_client(RobotCommandClient.default_service_name)
+            print(3)
+            footprint_R_body = EulerZXY(yaw=100, roll=0, pitch=0)
+            cmd = RobotCommandBuilder.synchro_stand_command(footprint_R_body=footprint_R_body, body_height = 0.0)
+            command_client.robot_command(cmd)
+            self.thread_running = False
+            print("before while")
+            #commented out for testin purposes
+            # while not self.thread_stopped:
+            time.sleep(0.5)
+            print("after while")
+            if self.obj_found:
+                new_clusters[cluster] = clusters[cluster]
+            else:
+                print("No match found for ", cluster, ". This cluster will be discarded.")
+        self.vision_model.clusters = new_clusters
+        print("the new clusters are: ", new_clusters)
+        clusters_f = open("clusters.pkl","wb")
+        pickle.dump(new_clusters, clusters_f)
+        clusters_f.close()
 
 
 
