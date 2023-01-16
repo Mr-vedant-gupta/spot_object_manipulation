@@ -30,12 +30,14 @@ from bosdyn.client.math_helpers import Quat, SE3Pose
 from bosdyn.client.power import PowerClient, power_on, safe_power_off
 from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient
 from bosdyn.client.robot_state import RobotStateClient
-from bosdyn.client.robot_command import RobotCommandClient, blocking_stand
+from bosdyn.client.robot_command import RobotCommandClient, blocking_stand, block_until_arm_arrives
 from bosdyn.geometry import EulerZXY
 from bosdyn.client.robot_command import RobotCommandBuilder
 from bosdyn.api import world_object_pb2
 from bosdyn.client.world_object import WorldObjectClient
 from navigation import estop_gui
+from skills.pour_grinds import pour_grinds_integrated, close_lid_integrated
+
 
 HOSTNAME = "138.16.161.22"
 UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
@@ -107,10 +109,53 @@ class GraphNavInterface(object):
             '12': self._navigate_to_object,
             '13': self._manipulate_object,
             '14': self._upload_clusters,
-            '15': self._go_to_fiducial
+            '15': self._blocking_stand,
+            '16': self._pour_grinds,
+            '17': self._pour_water,
+            '18': self._close_lid
         }
 
-    def _go_to_fiducial(self, *args):
+    def carry_pose(self):
+        # Stow the arm
+        # Build the stow command using RobotCommandBuilder
+        carry = RobotCommandBuilder.arm_carry_command()
+
+        # Issue the command via the RobotCommandClient
+        carry_command_id = self._robot_command_client.robot_command(carry)
+
+        block_until_arm_arrives(self._robot_command_client, carry_command_id, 3.0)
+
+    def stow_arm(self):
+        # Stow the arm
+        # Build the stow command using RobotCommandBuilder
+        stow = RobotCommandBuilder.arm_stow_command()
+
+        # Issue the command via the RobotCommandClient
+        stow_command_id = self._robot_command_client.robot_command(stow)
+
+        block_until_arm_arrives(self._robot_command_client, stow_command_id, 3.0)
+
+    def _blocking_stand(self, *args):
+        self.toggle_power(should_power_on=True)
+        blocking_stand(self._robot_command_client, timeout_sec=10)
+
+    def _pour_grinds(self, *args):
+        self._go_to_fiducial(0, 0, 0.8)
+        pour_grinds_integrated(self._robot, self._robot_command_client)
+        self.stow_arm()
+
+    def _pour_water(self, *args):
+        self._go_to_fiducial(0, 0, 0.8)
+        pour_grinds_integrated(self._robot, self._robot_command_client)
+        self.stow_arm()
+
+    def _close_lid(self, *args):
+        self._go_to_fiducial(0, -0.6, 0.1)
+        close_lid_integrated(self._robot, self._robot_command_client)
+        self.stow_arm()
+        self._go_to_fiducial(0, 0, 0.8)
+
+    def _go_to_fiducial(self, x, y, z):
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
@@ -126,12 +171,12 @@ class GraphNavInterface(object):
         fiducial_objects = world_object_client.list_world_objects(
             object_type=request_fiducials).world_objects
 
-        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map['filtered_fiducial_527'].parent_tform_child
+        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map['filtered_fiducial_523'].parent_tform_child
         vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
         seed_tform_fiducial = seed_tform_vision * vision_tform_fiducial
 
-        fiducial_tform_goto = SE3Pose(0,0,1,Quat())
+        fiducial_tform_goto = SE3Pose(x,y,z,Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
 
         print("Seed tform fiducial",seed_tform_fiducial)
@@ -785,9 +830,13 @@ class GraphNavInterface(object):
             (12) Move To Object.
             (13) Manipulate Object.
             (14) Upload Clusters.
-            (15) Align Along Fiducial
+            (15) Stand up
+            (16) Pour grinds
+            (17) Pour water
+            (18) Close lid
             (q) Exit.
             """)
+
             try:
                 inputs = input('>')
             except NameError:
