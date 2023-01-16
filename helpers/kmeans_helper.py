@@ -4,7 +4,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import matplotlib.pyplot as plt
 
-def __kmeans_cluster(objects, viz = False):
+def kmeans_cluster(objects, viz = False, k_list=[2,3,4,5,6,7,8,9,10]):
     #Objects is assumed to be list of poses ([x,y,z,...])
     #Returns a KMeans model
     X = np.array(objects)
@@ -17,7 +17,7 @@ def __kmeans_cluster(objects, viz = False):
     # determine best k value
     if viz:
         score_list = []
-    for i in range(2, 5):
+    for i in k_list:
         # print(i, X)
         kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
         score = silhouette_score(X, kmeans.labels_)
@@ -54,10 +54,14 @@ def relabel_clusters(kmeans_models, x, y):
 
     return clusters
 
-def visualize_kmeans(k_means_model, data, colors=["red","green","blue","purple","cyan"]):
+def visualize_kmeans(k_means_model, data, colors=["red","green","blue","purple","cyan","gold","orange","aquamarine","black","crimson","wheat"]):
     predictions = k_means_model.predict(data)
     print(predictions)
-    color_values = [colors[i] for i in predictions]
+
+    try:
+        color_values = [colors[i] for i in predictions]
+    except:
+        raise Exception("I ran out of colors :(")
 
     data_x, data_y = zip(*data)
 
@@ -71,6 +75,24 @@ def visualize_kmeans(k_means_model, data, colors=["red","green","blue","purple",
 
     plt.show()
 
+def viz_raw_data(label_data, position_data, colors=["red","green","blue","purple","cyan","gold","orange","aquamarine","black","crimson","wheat"]):
+    num_unique_labels = len(set(label_data))
+    used_colors = colors[:num_unique_labels]
+
+    color_label_info = list(zip(set(label_data), used_colors))
+    print("Label2color mapping:",color_label_info)
+
+    label_to_idx = [list(set(label_data)).index(l) for l in label_data]
+    print(label_to_idx)
+
+    idx_to_color = [colors[idx] for idx in label_to_idx]
+
+    data_x, data_y = zip(*position_data)
+    plt.scatter(data_x,data_y,color=idx_to_color)
+    plt.show()
+
+
+
 def extract_positions(data): #takes in raw_data
     return [d[:2] for d in data]
 
@@ -81,7 +103,10 @@ if __name__ == "__main__":
     label_data, feature_data = zip(*data)
 
     position_data = extract_positions(feature_data) #get only position data
-    k_means_model = __kmeans_cluster(position_data, viz=False) #best k-means model
+
+    viz_raw_data(label_data, position_data)
+
+    k_means_model = kmeans_cluster(position_data, viz=True, k_list=[4]) #best k-means model
     relabeled_data = relabel_clusters(k_means_model, position_data, label_data)
 
     visualize_kmeans(k_means_model, position_data)
