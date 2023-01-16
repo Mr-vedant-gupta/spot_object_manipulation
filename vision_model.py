@@ -105,6 +105,11 @@ class VisionModel:
         while True:
             if self.kill_thread:
 
+                raw_data = [(obj[0],[obj[1].position.x, obj[1].position.y, obj[1].position.z, obj[1].rotation.w, obj[1].rotation.x, obj[1].rotation.y, obj[1].rotation.z]) for obj in objects]
+
+                pickle.dump(raw_data, open("raw_data.pkl","wb"))
+
+
                 # create a binary pickle file 
                 clusters_f = open("clusters.pkl","wb")
                 kmeans_f = open("kmeans_model.pkl","wb")
@@ -144,7 +149,6 @@ class VisionModel:
             # Build a network compute request for this image source.
             image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
                 image_source=source)
-
             # Input data:
             #   model name
             #   minimum confidence (between 0 and 1)
@@ -154,15 +158,12 @@ class VisionModel:
                 model_name=MODEL_NAME,
                 min_confidence=CONFIDENCE_THRESHOLD,
                 rotate_image=network_compute_bridge_pb2.NetworkComputeInputData.ROTATE_IMAGE_ALIGN_HORIZONTAL)
-
             # Server data: the service name
             server_data = network_compute_bridge_pb2.NetworkComputeServerConfiguration(
                 service_name=SERVER_NAME)
-
             # Pack and send the request.
             process_img_req = network_compute_bridge_pb2.NetworkComputeRequest(
                 input_data=input_data, server_config=server_data)
-
             try:
                 resp = self.network_compute_client.network_compute_bridge_command(
                     process_img_req)
@@ -171,6 +172,7 @@ class VisionModel:
                 #print("Moving on!")
                 continue
 
+
             best_obj = None
             highest_conf = 0.0
             best_vision_tform_obj = None
@@ -178,7 +180,6 @@ class VisionModel:
 
             img = self.get_bounding_box_image(resp)
             image_full = resp.image_response
-
 
             if len(resp.object_in_image) > 0:
                 # Show the image
@@ -192,13 +193,11 @@ class VisionModel:
                     conf_msg = wrappers_pb2.FloatValue()
                     obj.additional_properties.Unpack(conf_msg)
                     conf = conf_msg.value
-
                     try:
                         vision_tform_obj = frame_helpers.get_a_tform_b(
                             obj.transforms_snapshot,
                             frame_helpers.VISION_FRAME_NAME,
                             obj.image_properties.frame_name_image_coordinates)
-
                         #graph = graph_nav_client.download_graph()
 
                         #print("GRAPH")
