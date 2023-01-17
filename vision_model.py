@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import cv2
 import math
+import time
 import bosdyn.client
 import bosdyn.client.util
 from bosdyn.api import image_pb2
@@ -28,10 +29,7 @@ class VisionModel:
         self.graph_nav_client = graph_nav_client
         self.network_compute_client = network_compute_client
         self.robot = robot
-        self.thread_running = False
-
-        self.thread = Thread(target = self.__thread_start_object_detection)
-        self.kill_thread = False
+        self.objects = []
 
         #TODO: dont use magic strings
         self.labels = ["door_handle","drawer","coffee_pot","coffee_cup"]
@@ -96,36 +94,34 @@ class VisionModel:
             averaged_cluster[cluster_name] = [average_pose]
         return averaged_cluster
 
+    def save_objects_detected(self):
+        raw_data = [(obj[0],[obj[1].position.x, obj[1].position.y, obj[1].position.z, obj[1].rotation.w, obj[1].rotation.x, obj[1].rotation.y, obj[1].rotation.z]) for obj in self.objects]
+
+        pickle.dump(raw_data, open("raw_data.pkl","wb"))
 
 
-    def __thread_start_object_detection(self):
-        self.thread_running = True
-        objects = []
+        # create a binary pickle file 
+        clusters_f = open("clusters.pkl","wb")
+        kmeans_f = open("kmeans_model.pkl","wb")
+
+        # write the python object (dict) to pickle file
+        self.clusters, self.kmeans_model = self.__kmeans_cluster(self.objects)
+        #self.clusters = self._find_cluster_averages(self.clusters)
+
+        pickle.dump(self.clusters, clusters_f)
+        pickle.dump(self.kmeans_model, kmeans_f)
+
+        clusters_f.close()
+        kmeans_f.close()
+        self.objects = []
+
+
+    def detect_objects(self, n_seconds):
         index = 0
-        while True:
-            if self.kill_thread:
+        
+        t_end = time.time() + n_seconds
 
-                raw_data = [(obj[0],[obj[1].position.x, obj[1].position.y, obj[1].position.z, obj[1].rotation.w, obj[1].rotation.x, obj[1].rotation.y, obj[1].rotation.z]) for obj in objects]
-
-                pickle.dump(raw_data, open("raw_data.pkl","wb"))
-
-
-                # create a binary pickle file 
-                clusters_f = open("clusters.pkl","wb")
-                kmeans_f = open("kmeans_model.pkl","wb")
-
-                # write the python object (dict) to pickle file
-                self.clusters, self.kmeans_model = self.__kmeans_cluster(objects)
-                #self.clusters = self._find_cluster_averages(self.clusters)
-
-                pickle.dump(self.clusters, clusters_f)
-                pickle.dump(self.kmeans_model, kmeans_f)
-
-                clusters_f.close()
-                kmeans_f.close()
-
-                self.thread_running = False
-                break
+        while time.time() < t_end:
             # for l in self.labels:
             best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image()
 
@@ -133,16 +129,8 @@ class VisionModel:
 
                 print("Found " + best_obj_label +" while searching")
 
-                objects.append((best_obj_label,seed_tform_obj))
+                self.objects.append((best_obj_label,seed_tform_obj))
                 index += 1
-
-    def start_object_detection(self):
-        self.kill_thread = False
-        self.thread.start()
-
-
-    def stop_object_detection(self):
-        self.kill_thread = True
 
     def get_object_and_image(self):
         for source in self.image_sources:
