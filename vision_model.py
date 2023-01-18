@@ -51,16 +51,18 @@ class VisionModel:
         best_kmeans = None
         #print("objects array: ", objects)
 
-        # determine best k value
-        for i in range(2, len(objects)):
-            #print(i, X)
-            kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
-            score = silhouette_score(X, kmeans.labels_)
-            #print("score: ", score)
+        best_kmeans = KMeans(n_clusters=5, n_init="auto").fit(X)
 
-            if score < min_score:
-                best_kmeans = kmeans
-                min_score = score
+        # # determine best k value
+        # for i in range(2, len(objects)):
+        #     #print(i, X)
+        #     kmeans = KMeans(n_clusters=i, n_init="auto").fit(X)
+        #     score = silhouette_score(X, kmeans.labels_)
+        #     #print("score: ", score)
+        #
+        #     if score < min_score:
+        #         best_kmeans = kmeans
+        #         min_score = score
 
         # add objects to their proper cluster dictionary key name
         #print("min score, best_km: ", min_score, best_kmeans)

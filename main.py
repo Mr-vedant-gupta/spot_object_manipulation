@@ -249,7 +249,9 @@ class GraphNavInterface(object):
             # Issue the navigation command about twice a second such that it is easy to terminate the
             # navigation command (with estop or killing the program).
             try:
-                self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y])
+                if not self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()]):
+                    print("Could not successfuly navigate to object location.")
+                    continue
                 #nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(seed_tform_goto.to_proto(), 5.0, command_id=nav_to_cmd_id)
 
             except ResponseError as e:
@@ -260,9 +262,9 @@ class GraphNavInterface(object):
             #time.sleep(5.5)  # Sleep for second and a half to allow for command execution.
 
             # the specified location is not attainable
-            if not self._check_success(nav_to_cmd_id):
-                print("Could not successfuly navigate to object location.")
-                continue
+            # if not self._check_success(nav_to_cmd_id):
+            #     print("Could not successfuly navigate to object location.")
+            #     continue
 
             best_obj, best_obj_label, image, vision_tform_obj, seed_tform_obj, source = self.vision_model.get_object_and_image()
 
@@ -277,6 +279,9 @@ class GraphNavInterface(object):
                 found_object = True
                 print("The object found does not match the cluster we specified")
                 continue
+            else: 
+                print("Correct object found!.")
+                break
 
         # This needs to only work for objects that need a fiducial (something like the coffee pot)
         # if "coffee_pot" in args[0][0] and found_object:
@@ -315,7 +320,7 @@ class GraphNavInterface(object):
         self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _manipulate_object(self, *args):
-        self._navigate_to_object(args)
+        #self._navigate_to_object(args)
         label = None
         print("going to manipualte an object!")
 
@@ -516,7 +521,7 @@ class GraphNavInterface(object):
 
         if len(args) < 1 or len(args[0]) not in [2, 3, 4, 7]:
             print("Invalid arguments supplied.")
-            return
+            return False
 
         seed_T_goal = SE3Pose(float(args[0][0]), float(args[0][1]), 0.0, Quat())
 
@@ -526,7 +531,7 @@ class GraphNavInterface(object):
             localization_state = self._graph_nav_client.get_localization_state()
             if not localization_state.localization.waypoint_id:
                 print("Robot not localized")
-                return
+                return False
             seed_T_goal.z = localization_state.localization.seed_tform_body.position.z
 
         if len(args[0]) == 3:
@@ -539,7 +544,7 @@ class GraphNavInterface(object):
 
         if not self.toggle_power(should_power_on=True):
             print("Failed to power on the robot, and cannot complete navigate to request.")
-            return
+            return False
 
         nav_to_cmd_id = None
         # Navigate to the destination.
@@ -556,12 +561,14 @@ class GraphNavInterface(object):
             time.sleep(.5)  # Sleep for half a second to allow for command execution.
             # Poll the robot for feedback to determine if the navigation command is complete. Then sit
             # the robot down once it is finished.
-            is_finished = self._check_success(nav_to_cmd_id)
+            is_finished, status = self._check_success(nav_to_cmd_id)
 
         # Power off the robot if appropriate.
         # if self._powered_on and not self._started_powered_on:
         #     # Sit the robot down + power off after the navigation command is complete.
         #     self.toggle_power(should_power_on=False)
+
+        return is_finished and status.status == graph_nav_pb2.NavigationFeedbackResponse.STATUS_REACHED_GOAL
 
     def _navigate_to(self, *args):
         """Navigate to a specific waypoint."""
@@ -597,7 +604,7 @@ class GraphNavInterface(object):
             time.sleep(.5)  # Sleep for half a second to allow for command execution.
             # Poll the robot for feedback to determine if the navigation command is complete. Then sit
             # the robot down once it is finished.
-            is_finished = self._check_success(nav_to_cmd_id)
+            is_finished, _ = self._check_success(nav_to_cmd_id)
 
         # Power off the robot if appropriate.
         # if self._powered_on and not self._started_powered_on:
@@ -653,7 +660,7 @@ class GraphNavInterface(object):
                 time.sleep(.5)  # Sleep for half a second to allow for command execution.
                 # Poll the robot for feedback to determine if the route is complete. Then sit
                 # the robot down once it is finished.
-                is_finished = self._check_success(nav_route_command_id)
+                is_finished, _ = self._check_success(nav_route_command_id)
 
             # Power off the robot if appropriate.
             if self._powered_on and not self._started_powered_on:
@@ -701,23 +708,23 @@ class GraphNavInterface(object):
         """Use a navigation command id to get feedback from the robot and sit when command succeeds."""
         if command_id == -1:
             # No command, so we have no status to check.
-            return False
+            return False, None
         status = self._graph_nav_client.navigation_feedback(command_id)
         if status.status == graph_nav_pb2.NavigationFeedbackResponse.STATUS_REACHED_GOAL:
             # Successfully completed the navigation commands!
-            return True
+            return True, status
         elif status.status == graph_nav_pb2.NavigationFeedbackResponse.STATUS_LOST:
             print("Robot got lost when navigating the route, the robot will now sit down.")
-            return False
+            return True, status
         elif status.status == graph_nav_pb2.NavigationFeedbackResponse.STATUS_STUCK:
             print("Robot got stuck when navigating the route, the robot will now sit down.")
-            return False
+            return True, status
         elif status.status == graph_nav_pb2.NavigationFeedbackResponse.STATUS_ROBOT_IMPAIRED:
             print("Robot is impaired.")
-            return True
+            return True, status
         else:
             # Navigation command is not complete yet.
-            return False
+            return False, None
 
     def _match_edge(self, current_edges, waypoint1, waypoint2):
         """Find an edge in the graph that is between two waypoint ids."""
