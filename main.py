@@ -41,8 +41,8 @@ from skills.pour_grinds import pour_grinds_integrated, close_lid_integrated
 
 HOSTNAME = "138.16.161.22"
 #HOSTNAME = "192.168.80.3"
-UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
-#UPLOAD_FILEPATH = "./navigation/maps/cit121/downloaded_graph"
+#UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
 #UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 class GraphNavInterface(object):
@@ -775,17 +775,22 @@ class GraphNavInterface(object):
             print("waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
             return
 
+        print("The waypoint list:",waypoints)
 
         #TODO: increase this (reduced for testing purposes)
         for i in range(1):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:25]:
-                self._navigate_to([waypoint])
-                print("Running vision model while at waypoint")
-                self.vision_model.detect_objects(5)
-                print("Done searching, stopping vision model")
+            for waypoint in waypoints[:30]:
+                try:
+                    print("Waypoint:",waypoint)
+                    self._navigate_to([waypoint])
+                    print("Running vision model while at waypoint")
+                    self.vision_model.detect_objects(5)
+                    print("Done searching, stopping vision model")
+                except:
+                    continue
 
         print("storing objects.")
         self.vision_model.save_objects_detected()

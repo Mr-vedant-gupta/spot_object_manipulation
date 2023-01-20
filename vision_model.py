@@ -16,7 +16,7 @@ from sklearn.metrics import silhouette_score
 
 MODEL_NAME = "handle-model"
 SERVER_NAME = "fetch-server"
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.65
 
 class VisionModel:
     image_sources = [
