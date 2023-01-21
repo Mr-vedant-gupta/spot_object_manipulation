@@ -99,7 +99,7 @@ def extract_positions(data): #takes in raw_data
 if __name__ == "__main__":
     import pickle
 
-    data = pickle.load(open("raw_data.pkl","rb")) #get raw data from object identification
+    data = pickle.load(open("./pkl_files/raw_data.pkl","rb")) #get raw data from object identification
     label_data, feature_data = zip(*data)
 
     position_data = extract_positions(feature_data) #get only position data

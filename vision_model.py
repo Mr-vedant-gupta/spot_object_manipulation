@@ -39,7 +39,7 @@ class VisionModel:
         # Via network compute server
         pass
 
-    def __kmeans_cluster(self, objects):
+    def __kmeans_cluster(self, objects, n_cluster=1):
         clusters = {}
 
         # objects is in form [(label,SE3Pose),(label,SE3Pose)...]
@@ -51,7 +51,7 @@ class VisionModel:
         best_kmeans = None
         #print("objects array: ", objects)
 
-        best_kmeans = KMeans(n_clusters=5, n_init="auto").fit(X)
+        best_kmeans = KMeans(n_clusters=n_cluster, n_init="auto").fit(X)
 
         # # determine best k value
         # for i in range(2, len(objects)):
@@ -99,22 +99,30 @@ class VisionModel:
     def save_objects_detected(self):
         raw_data = [(obj[0],[obj[1].position.x, obj[1].position.y, obj[1].position.z, obj[1].rotation.w, obj[1].rotation.x, obj[1].rotation.y, obj[1].rotation.z]) for obj in self.objects]
 
-        pickle.dump(raw_data, open("raw_data.pkl","wb"))
+        pickle.dump(raw_data, open("./pkl_files/raw_data.pkl","wb"))
 
+        unique_seen_classes = list(set([obj[0] for obj in self.objects]))
 
-        # create a binary pickle file 
-        clusters_f = open("clusters.pkl","wb")
-        kmeans_f = open("kmeans_model.pkl","wb")
+        print("saving data")
+        for unique_seen_class in unique_seen_classes:
+            print(f"saving for class {unique_seen_class}")
+            # create a binary pickle file 
+            clusters_f = open(f"./pkl_files/clusters_{unique_seen_class}.pkl","wb")
+            kmeans_f = open(f"./pkl_files/kmeans_model_{unique_seen_class}.pkl","wb")
 
-        # write the python object (dict) to pickle file
-        self.clusters, self.kmeans_model = self.__kmeans_cluster(self.objects)
-        #self.clusters = self._find_cluster_averages(self.clusters)
+            unique_seen_class_objects = [obj for obj in self.objects if obj[0] == unique_seen_class]
 
-        pickle.dump(self.clusters, clusters_f)
-        pickle.dump(self.kmeans_model, kmeans_f)
+            print(f"unique seen objects are: {unique_seen_class_objects}")
 
-        clusters_f.close()
-        kmeans_f.close()
+            # write the python object (dict) to pickle file
+            clusters, kmeans_model = self.__kmeans_cluster(unique_seen_class_objects)
+            #self.clusters = self._find_cluster_averages(self.clusters)
+
+            pickle.dump(clusters, clusters_f)
+            pickle.dump(kmeans_model, kmeans_f)
+
+            clusters_f.close()
+            kmeans_f.close()
         self.objects = []
 
 

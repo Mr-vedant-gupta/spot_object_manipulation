@@ -185,31 +185,42 @@ class GraphNavInterface(object):
         self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _list_objects(self, *args):
-        if self.vision_model.clusters is None:
+        try:
+            for label in self.vision_model.kmeans_dict.keys():
+                print(f"Objects for class {label}")
+                for sublabel in self.vision_model.kmeans_dict[label][1].keys():
+                    print(sublabel)
+        except:
             print("There are no objects. Please upload clusters first.")
-        for label in self.vision_model.clusters.keys():
-            print(label)
 
     def _upload_clusters(self, *args):
+        labels = ["coffee_pot","drawer","coffee_cup"]
+        kmeans_dict = {}
 
-        if not os.path.isfile("clusters.pkl"):
-            print("clusters.pkl does not exist")
-            return
+        for label in labels:
+            if not os.path.isfile(f"./pkl_files/clusters_{label}.pkl"):
+                print("clusters.pkl does not exist")
+                return
 
-        if not os.path.isfile("kmeans_model.pkl"):
-            print("kmeans_model.pkl does not exist")
-            return
+            if not os.path.isfile(f"./pkl_files/kmeans_model_{label}.pkl"):
+                print("kmeans_model.pkl does not exist")
+                return
 
-        with open('kmeans_model.pkl', 'rb') as handle:
-            self.vision_model.kmeans_model = pickle.load(handle)
+            with open(f"./pkl_files/kmeans_model_{label}.pkl", 'rb') as handle:
+                kmeans_model = pickle.load(handle)
 
-        with open('clusters.pkl', 'rb') as handle:
-            self.vision_model.clusters = pickle.load(handle)
+            with open(f"./pkl_files/clusters_{label}.pkl", 'rb') as handle:
+                clusters = pickle.load(handle)
+
+            kmeans_dict[label] = [kmeans_model, clusters]
+        self.vision_model.kmeans_dict = kmeans_dict
 
     def _navigate_to_object(self, *args):
 
         """Navigate to a specific waypoint."""
         print("args: ", args)
+        object_class = args[0][0].split("__")[1]
+        print(f"object class is {object_class}")
         # Take the first argument as the destination object.
 
         if len(args) < 1:
@@ -217,7 +228,9 @@ class GraphNavInterface(object):
             print("No object provided as a destination for navigate to.")
             return
 
-        if not args[0][0] in self.vision_model.clusters.keys():
+        print(self.vision_model.kmeans_dict[object_class][1].keys())
+
+        if not args[0][0] in self.vision_model.kmeans_dict[object_class][1].keys():
             print(args[0][0] + " not in clusters.")
             return
 
@@ -227,7 +240,7 @@ class GraphNavInterface(object):
 
         thetas = [0,30,45,60,90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330]
 
-        seed_T_goal = self.vision_model.clusters[args[0][0]][0]  # the list will only have one element
+        seed_T_goal = self.vision_model.kmeans_dict[object_class][1][args[0][0]][0]  # the list will only have one element
         #seed_T_goal = SE3Pose(seed_T_goal[0],seed_T_goal[1],0,Quat())
         print(seed_T_goal)
 
@@ -794,6 +807,7 @@ class GraphNavInterface(object):
 
         print("storing objects.")
         self.vision_model.save_objects_detected()
+        self._upload_clusters()
 
         #check if each cluster is valid
         # print("validating each cluster")
