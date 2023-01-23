@@ -117,15 +117,18 @@ class VisionModel:
         kmeans_f.close()
         self.objects = []
 
-
-    def detect_objects(self, n_seconds):
+    def detect_objects_hand(self, n_seconds):
+        self.detect_objects(n_seconds, ["hand_color_image"])
+    def detect_objects(self, n_seconds, image_sources = None):
         index = 0
         
         t_end = time.time() + n_seconds
 
         while time.time() < t_end:
             # for l in self.labels:
-            best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image()
+            if image_sources == None:
+                image_sources = self.image_sources
+            best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(image_sources)
 
             if seed_tform_obj is not None:
 
@@ -134,8 +137,8 @@ class VisionModel:
                 self.objects.append((best_obj_label,seed_tform_obj))
                 index += 1
 
-    def get_object_and_image(self):
-        for source in self.image_sources:
+    def get_object_and_image(self, image_sources):
+        for source in image_sources:
             # Build a network compute request for this image source.
             image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
                 image_source=source)

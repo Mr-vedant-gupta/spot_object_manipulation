@@ -133,6 +133,7 @@ class GraphNavInterface(object):
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
             '20': self.goto_locale,
+            '21': self.hand_cam_search
         }
 
     def carry_pose(self):
@@ -962,7 +963,8 @@ class GraphNavInterface(object):
 
         print("storing objects.")
         self.all_fiducial_to_pose_dict = all_fiducial_to_pose_dict
-
+    def hand_cam_search(self, *args):
+        self.vision_model.detect_objects_hand(5)
 
     def _navigate_all(self, *args):
 
@@ -981,7 +983,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:30]:
+            for waypoint in waypoints[:10]:
                 try:
                     print("Waypoint:",waypoint)
                     self._navigate_to([waypoint])
@@ -1078,6 +1080,7 @@ class GraphNavInterface(object):
             (18) Close lid
             (19) Navigate all fiducials
             (20) Go to locale
+            (21) Search through hand_cam
             (q) Exit.
             """)
 
