@@ -91,11 +91,20 @@ class GraphNavInterface(object):
         self._current_waypoint_snapshots = dict()  # maps id to waypoint snapshot
         self._current_edge_snapshots = dict()  # maps id to edge snapshot
         self._current_annotation_name_to_wp_id = dict()
-        self._object_fiducials_dict = {'coffee_pot': 'filtered_fiducial_523', 'cupboard': 'idk', 'table': 'idk'}
+        self._object_fiducials_dict = {'coffee_pot': 'filtered_fiducial_523',
+                                       'cupboard': 'filtered_fiducial_534',
+                                       'table': 'filtered_fiducial_529',
+                                       'drawers': 'filtered_fiducial_535'
+                                       }
         self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.8)},
-        'pour_water': {'coffee_pot': (0, 0, 0.8)},
-        'close_lid': {'coffee_pot': (0, -0.6, 0.1)}
-        }
+                                   'pour_water': {'coffee_pot': (0, 0, 0.8)},
+                                   'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
+                                   'go_to': {'coffee_pot': (0, 0, 0.8),
+                                             'cupboard': (0, 0, 0.8),
+                                             'table': (0, 0, 0.8),
+                                             'drawers': (0, 0, 0.8),
+                                             }
+                                   }
 
         # Filepath for uploading a saved graph's and snapshots too.
         if upload_path[-1] == "/":
@@ -123,7 +132,7 @@ class GraphNavInterface(object):
             '17': self._pour_water,
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
-            '20': self.goto_coffee_machine,
+            '20': self.goto_locale,
         }
 
     def carry_pose(self):
@@ -150,13 +159,16 @@ class GraphNavInterface(object):
         self.toggle_power(should_power_on=True)
         blocking_stand(self._robot_command_client, timeout_sec=10)
 
-    def goto_coffee_machine(self, *args):
+    def goto_locale(self, *args):
         location = args[0][0]
+        if location not in self._skill_offset_dict['go_to'].keys():
+            print(f"{location} not valid")
+            return
         print(f"location is {location}")
         print(self._object_fiducials_dict[location])
-        print(self._skill_offset_dict['pour_grinds'][location])
+        print(self._skill_offset_dict['go_to'][location])
         print("Going to object")
-        self._go_to_fiducial_new(self._object_fiducials_dict[location], self._skill_offset_dict['pour_grinds'][location])
+        self._go_to_fiducial_new(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
 
 
     def _pour_grinds(self, *args):
@@ -935,7 +947,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:20]:
+            for waypoint in waypoints[:10]:
                 if waypoint != None:
                     self._navigate_to([waypoint])
 
@@ -1065,7 +1077,7 @@ class GraphNavInterface(object):
             (17) Pour water
             (18) Close lid
             (19) Navigate all fiducials
-            (20) Go to coffee machine
+            (20) Go to locale
             (q) Exit.
             """)
 
