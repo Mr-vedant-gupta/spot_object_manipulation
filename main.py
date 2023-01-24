@@ -10,6 +10,7 @@ import math
 import os
 import sys
 import time
+from bosdyn.client import math_helpers
 
 import graph_nav_util
 import pickle
@@ -36,7 +37,7 @@ from bosdyn.client.robot_command import RobotCommandBuilder
 from bosdyn.api import world_object_pb2
 from bosdyn.client.world_object import WorldObjectClient
 from navigation import estop_gui
-from skills.pour_grinds import pour_grinds_integrated, close_lid_integrated
+from skills.spot_manipulation_skills import execute_trajectory_from_poses_oo, close_lid
 from collections import defaultdict
 
 import numpy as np
@@ -97,6 +98,7 @@ class GraphNavInterface(object):
                                        'drawers': 'filtered_fiducial_535'
                                        }
         self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.8)},
+                                   'push_button': {'coffee_pot': (0, 0, 0.8)},
                                    'pour_water': {'coffee_pot': (0, 0, 0.8)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
                                    'go_to': {'coffee_pot': (0, 0, 0.8),
@@ -128,12 +130,13 @@ class GraphNavInterface(object):
             '13': self._manipulate_object,
             '14': self._upload_clusters,
             '15': self._blocking_stand,
-            '16': self._pour_grinds,
+            '16': self._pour_grinds_oo,
             '17': self._pour_water,
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
             '20': self.goto_locale,
-            '21': self.hand_cam_search
+            '21': self.hand_cam_search,
+            '22': self._push_button
         }
 
     def carry_pose(self):
@@ -169,41 +172,46 @@ class GraphNavInterface(object):
         print(self._object_fiducials_dict[location])
         print(self._skill_offset_dict['go_to'][location])
         print("Going to object")
-        self._go_to_fiducial_new(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
+        self._go_to_fiducial_global(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
 
-
-    def _pour_grinds(self, *args):
+    def _push_button(self, *args):
         location = args[0][0]
-        print("local fiducial for alignment")
-        self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['pour_grinds'][location])
-        print("skill execution")
-        pour_grinds_integrated(self._robot, self._robot_command_client)
-        self.stow_arm()
+        fid_number = self._object_fiducials_dict[location]
+
+        #This realigns the robot based on local fiducial tracking
+        #self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+
+        get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
+
+        looking_negative_z = math_helpers.Quat.from_pitch(np.pi/2)
+
+        #In the fiducial frame
+        cmd_poses_fiducial_frame = [
+            [0.25,-0.1,0.1,looking_negative_z,5.0],
+            [0.25,-0.1,-0.05,looking_negative_z,10.0],
+            [0.25, -0.1, 0.1, looking_negative_z,15.0]
+        ]
+
+        #List consiting of (SE(3),timing)
+        cmd_poses_body_frame = [(get_body_tform_goal_fid(cmd_pose[:-1]), cmd_pose[-1]) for cmd_pose in cmd_poses_fiducial_frame]
+
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, cmd_poses_body_frame, 1.0)
 
 
-    '''
     def _pour_grinds(self, *args):
-        self._go_to_fiducial(0, 0, 0.8)
-        pour_grinds_integrated(self._robot, self._robot_command_client)
-        self.stow_arm()
-    '''
+        pass
+
 
     def _pour_water(self, *args):
-        location = args[0][0]
-        print(f"location is {location}")
-        print(self._object_fiducials_dict[location])
-        print(self._skill_offset_dict['pour_water'][location])
-        self._go_to_fiducial_new(self._object_fiducials_dict[location], self._skill_offset_dict['pour_water'][location])
-        pour_grinds_integrated(self._robot, self._robot_command_client)
-        self.stow_arm()
+        pass
 
     def _close_lid(self, *args):
         location = args[0][0]
         print(f"location is {location}")
         print(self._object_fiducials_dict[location])
         print(self._skill_offset_dict['close_lid'][location])
-        self._go_to_fiducial_new(self._object_fiducials_dict[location], self._skill_offset_dict['close_lid'][location])
-        close_lid_integrated(self._robot, self._robot_command_client)
+        self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['close_lid'][location])
+        close_lid(self._robot, self._robot_command_client)
         self.stow_arm()
 
     def average_3d_pose(self, l):
@@ -247,7 +255,7 @@ class GraphNavInterface(object):
 
 
 
-    def _go_to_fiducial_new(self, fid_number, offsets):
+    def _go_to_fiducial_global(self, fid_number, offsets):
         x, y, z = offsets
         print(fid_number, offsets)
         localization_state = self._graph_nav_client.get_localization_state()
@@ -291,6 +299,7 @@ class GraphNavInterface(object):
         fiducial_objects = world_object_client.list_world_objects(
             object_type=request_fiducials).world_objects
 
+        #TODO: We need to loop through fiducial_objects and look for a valid fid_number instance
         vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[fid_number].parent_tform_child
         vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
@@ -791,6 +800,55 @@ class GraphNavInterface(object):
         """Clear the state of the map on the robot, removing all waypoints and edges."""
         return self._graph_nav_client.clear_graph()
 
+    def get_body_tform_goal(self, fiducial_tform_goal_list, fid_number):
+        '''
+        Given an [x,y,z,w,x,y,z] in fiducial frame, convert it into body frame through the seed frame
+        '''
+
+        '''
+        Turn fiducial_tform_goal into an SE(3) Pose
+        '''
+        x,y,z,rot= fiducial_tform_goal_list
+        fiducial_tform_goal = SE3Pose(x,y,z,rot)
+        print(f"fiducial_tform_goal: {fiducial_tform_goal}")
+        '''
+        First get seed_tform_fiducial based on local fiducial viewing
+        '''
+        localization_state = self._graph_nav_client.get_localization_state()
+        seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
+
+        print(f"seed_tform_body {seed_tform_body}")
+
+        vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
+        print(f"Vision_tform_body {vision_tform_body}")
+        body_tform_vision = vision_tform_body.inverse()
+
+        world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
+        # Get all fiducial objects (an object of a specific type).
+        request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
+        fiducial_objects = world_object_client.list_world_objects(
+            object_type=request_fiducials).world_objects
+
+        for fiducial_object in fiducial_objects:
+            if fid_number in list(fiducial_object.transforms_snapshot.child_to_parent_edge_map.keys()):
+                vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[fid_number].parent_tform_child
+                break
+        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+
+        print(f"vision_tform_fiducial {vision_tform_fiducial}")
+
+        body_tform_fiducial = body_tform_vision * vision_tform_fiducial
+        print(f"body_tform_fiducial {body_tform_fiducial}")
+        body_tform_goal = body_tform_fiducial * fiducial_tform_goal
+        print(f"body_tform_goal {body_tform_goal}")
+
+        fbody_tform_body = bosdyn.client.frame_helpers.get_a_tform_b(self._robot.get_frame_tree_snapshot(),"flat_body","body")
+        fbody_tform_goal = fbody_tform_body * body_tform_goal
+        return(fbody_tform_goal)
+
+
+
+
     def toggle_power(self, should_power_on):
         """Power the robot on/off dependent on the current power state."""
         is_powered_on = self.check_is_powered_on()
@@ -1081,6 +1139,7 @@ class GraphNavInterface(object):
             (19) Navigate all fiducials
             (20) Go to locale
             (21) Search through hand_cam
+            (22) Push button
             (q) Exit.
             """)
 
