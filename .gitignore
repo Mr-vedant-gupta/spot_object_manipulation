@@ -1,3 +1,6 @@
 handle/models
 handle/exported-models
 handle/pre-trained-models
+object_models_hand_cam/models
+object_models_hand_cam/exported-models
+object_models_hand_cam/pre-trained-models
