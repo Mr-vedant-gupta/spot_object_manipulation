@@ -130,7 +130,7 @@ class GraphNavInterface(object):
             '13': self._manipulate_object,
             '14': self._upload_clusters,
             '15': self._blocking_stand,
-            '16': self._pour_grinds_oo,
+            '16': self._pour_grinds,
             '17': self._pour_water,
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
@@ -186,16 +186,30 @@ class GraphNavInterface(object):
         looking_negative_z = math_helpers.Quat.from_pitch(np.pi/2)
 
         #In the fiducial frame
-        cmd_poses_fiducial_frame = [
-            [0.25,-0.1,0.1,looking_negative_z,5.0],
-            [0.25,-0.1,-0.05,looking_negative_z,10.0],
-            [0.25, -0.1, 0.1, looking_negative_z,15.0]
+        cmd_poses_fiducial_frame = [[
+            [0.25,-0.07,0.1,looking_negative_z,5.0],
+            [0.25,-0.07,-0.05,looking_negative_z,10.0]
+        ],
+        [
+            [0.25, -0.07, -0.05, looking_negative_z, 1.0]
+        ],
+        [
+            [0.25, -0.07, -0.05, looking_negative_z, 1.0],
+            [0.25, -0.07, 0.1, looking_negative_z,5.0]
+        ]
         ]
 
-        #List consiting of (SE(3),timing)
-        cmd_poses_body_frame = [(get_body_tform_goal_fid(cmd_pose[:-1]), cmd_pose[-1]) for cmd_pose in cmd_poses_fiducial_frame]
+        processed_cmd_poses_body_frame = []
+        for l in cmd_poses_fiducial_frame:
+            #List consiting of (SE(3),timing)
+            cmd_poses_body_frame = [(get_body_tform_goal_fid(cmd_pose[:-1]), cmd_pose[-1]) for cmd_pose in l]
+            processed_cmd_poses_body_frame.append(cmd_poses_body_frame)
 
-        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, cmd_poses_body_frame, 1.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[0], 1.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[1], 0.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[2], 1.0)
+
+        self.stow_arm()
 
 
     def _pour_grinds(self, *args):
