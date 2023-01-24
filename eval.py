@@ -52,9 +52,17 @@ def main():
 
         image = cv2.imread(full_path, -1)
 
+        cv2.imshow('image 1', image)
+        cv2.waitKey(1000)
+
         if len(image.shape) < 3:
+            print("Single channel image. Convert to RGB")
             # Single channel image, convert to RGB.
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+        cv2.imshow('image  2', image)
+        cv2.waitKey(1000)
 
         input_tensor = tf.convert_to_tensor(image)
         input_tensor = input_tensor[tf.newaxis, ...]
@@ -75,6 +83,10 @@ def main():
         box = tuple(boxes[0].tolist())
 
         image_np_with_detections = image.copy()
+
+        cv2.imshow('image 3', image_np_with_detections)
+        cv2.waitKey(1000)
+
         viz_utils.visualize_boxes_and_labels_on_image_array(
               image_np_with_detections,
               detections['detection_boxes'],
@@ -88,7 +100,11 @@ def main():
 
         output_path = os.path.join(args.output_dir, image_path)
 
+        cv2.imshow('image 4', image_np_with_detections)
+        cv2.waitKey(1000)
+
         Image.fromarray(image_np_with_detections).save(output_path)
+
 
         print(' Done')
         counter += 1
