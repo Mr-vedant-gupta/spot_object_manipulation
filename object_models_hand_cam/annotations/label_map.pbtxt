@@ -2,3 +2,7 @@ item {
     id: 1
     name: 'coffee_cup'
 }
+item {
+    id: 2
+    name: 'water_cup'
+}
