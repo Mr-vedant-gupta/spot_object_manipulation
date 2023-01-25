@@ -99,14 +99,14 @@ class GraphNavInterface(object):
                                        'table': 'filtered_fiducial_529',
                                        'drawers': 'filtered_fiducial_535'
                                        }
-        self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.8)},
-                                   'push_button': {'coffee_pot': (0, 0, 0.8)},
-                                   'pour_water': {'coffee_pot': (0, 0, 0.8)},
+        self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.9)},
+                                   'push_button': {'coffee_pot': (0, 0, 0.9)},
+                                   'pour_water': {'coffee_pot': (0, 0, 0.9)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
-                                   'go_to': {'coffee_pot': (0, 0, 0.8),
-                                             'cupboard': (0, 0, 0.8),
-                                             'table': (0, 0, 0.8),
-                                             'drawers': (0, 0, 0.8),
+                                   'go_to': {'coffee_pot': (0, 0, 0.9),
+                                             'cupboard': (0, 0, 0.9),
+                                             'table': (0, 0, 0.9),
+                                             'drawers': (0, 0, 0.9),
                                              }
                                    }
 
@@ -139,7 +139,10 @@ class GraphNavInterface(object):
             '20': self._goto_locale,
             '21': self._hand_cam_search,
             '22': self._push_button,
-            '23': self._open_gripper_and_stow
+            '23': self._open_gripper_and_stow,
+            '24': self._place_cup_left,
+            '25': self._place_cup_right
+
         }
 
     def carry_pose(self):
@@ -176,6 +179,7 @@ class GraphNavInterface(object):
         print(self._skill_offset_dict['go_to'][location])
         print("Going to object")
         self._go_to_fiducial_global(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
+
 
     def _push_button(self, *args):
         location = args[0][0]
@@ -222,7 +226,98 @@ class GraphNavInterface(object):
         cmd_id = self._robot_command_client.robot_command(gripper_open)
         self.stow_arm()
 
-    def _pour_grinds(self, *args):
+
+    def _place_cup_left(self, *args):
+        location = args[0][0]
+        fid_number = self._object_fiducials_dict[location]
+
+        # This realigns the robot based on local fiducial tracking
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+
+        get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
+
+        looking_negative_z = math_helpers.Quat.from_pitch(np.pi / 2)
+        holding_quat = math_helpers.Quat.from_roll(1.57)
+
+        # In the fiducial frame
+        cmd_poses_fiducial_frame = [[
+            [0.5, 0.25, 0, looking_negative_z, 5.0],
+            [0.5, 0.25, -0.15, looking_negative_z, 10.0],
+            [0.32, 0.25, -0.15, looking_negative_z, 15.0]
+        ],
+        [
+            [0.32, 0.25, -0.15, looking_negative_z, 5],
+            [0.32, 0.20, .15, looking_negative_z, 10],
+        ]
+        ]
+
+        processed_cmd_poses_body_frame = []
+
+        for seq in cmd_poses_fiducial_frame:
+            seq_1_poses_body_frame = []
+            for pose in seq:  # for each pose in first move sequence
+                cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+                # print(type(cmd_pose_body_frame[0].position))
+                # print(cmd_pose_body_frame[0].position)
+                new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                       cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+                # print(new_pose_body_frame)
+                seq_1_poses_body_frame.append(new_pose_body_frame)
+            processed_cmd_poses_body_frame.append(seq_1_poses_body_frame)
+
+
+        # for seq in processed_cmd_poses_body_frame:
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[0], 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[1], 1)
+
+        self.stow_arm()
+
+    def _place_cup_right(self, *args):
+        location = args[0][0]
+        fid_number = self._object_fiducials_dict[location]
+
+        # This realigns the robot based on local fiducial tracking
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+
+        get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
+
+        looking_negative_z = math_helpers.Quat.from_pitch(np.pi / 2)
+        holding_quat = math_helpers.Quat.from_roll(1.57)
+
+        # In the fiducial frame
+        cmd_poses_fiducial_frame = [[
+            [0.5, -0.5, 0, looking_negative_z, 5.0],
+            [0.5, -0.5, -0.15, looking_negative_z, 10.0],
+            [0.32, -0.5, -0.15, looking_negative_z, 15.0]
+        ],
+            [
+                [0.32, -0.5, -0.15, looking_negative_z, 5],
+                [0.32, -0.55, .15, looking_negative_z, 10],
+            ]
+        ]
+
+        processed_cmd_poses_body_frame = []
+
+        for seq in cmd_poses_fiducial_frame:
+            seq_1_poses_body_frame = []
+            for pose in seq:  # for each pose in first move sequence
+                cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+                # print(type(cmd_pose_body_frame[0].position))
+                # print(cmd_pose_body_frame[0].position)
+                new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                       cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+                # print(new_pose_body_frame)
+                seq_1_poses_body_frame.append(new_pose_body_frame)
+            processed_cmd_poses_body_frame.append(seq_1_poses_body_frame)
+
+        # for seq in processed_cmd_poses_body_frame:
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[0], 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[1], 1)
+
+        self.stow_arm()
+    def _pour_water(self, *args):
         # location = args[0][0]
         location = "coffee_pot"
         fid_number = self._object_fiducials_dict[location]
@@ -234,29 +329,19 @@ class GraphNavInterface(object):
 
         looking_negative_z = math_helpers.Quat.from_pitch(-np.pi / 2)
 
-        # In the fiducial frame
-        # cmd_poses_fiducial_frame = [[
-        #     [0.25, -0.07, 0.1, looking_negative_z, 5.0],
-        #     [0.25, -0.07, -0.05, looking_negative_z, 10.0]
-        #     ],
-        #     [
-        #         [0.25, -0.07, -0.05, looking_negative_z, 1.0],
-        #         [0.25, -0.07, 0.1, looking_negative_z, 5.0]
-        #     ]
-        # ]
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
-            [0.5, 0, 0.1, looking_negative_z, 2.0],
+            #[0.5, 0, 0.1, looking_negative_z, 2.0],
             [0.7, -0.07, 0.1, looking_negative_z, 4.0],
-            [0.7, -0.07, -0.2, looking_negative_z, 6.0],
+            [0.7, -0.07, -0.23, looking_negative_z, 6.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.07, -0.2, looking_negative_z, 1.0],
-                [0.7, -0.07, -0.2, looking_negative_z, 1.0]
+                [0.7, -0.07, -0.23, looking_negative_z, 1.0],
+                [0.7, -0.07, -0.23, looking_negative_z, 1.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.07, -0.2, looking_negative_z, 2.0],
+                [0.7, -0.07, -0.23, looking_negative_z, 2.0],
                 [0.7, -0.07, 0.1, looking_negative_z, 4.0],
-                [0.5, 0, 0.1, looking_negative_z, 6.0],
+                #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
 
         ]
@@ -314,8 +399,88 @@ class GraphNavInterface(object):
         self.stow_arm()
         pass
 
-    def _pour_water(self, *args):
+    def _pour_grinds(self, *args):
+        # location = args[0][0]
+        location = "coffee_pot"
+        fid_number = self._object_fiducials_dict[location]
+
+        # This realigns the robot based on local fiducial tracking
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+
+        get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
+
+        looking_negative_z = math_helpers.Quat.from_pitch(-np.pi / 2)
+
+        cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
+            #[0.5, 0, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.04, 0.1, looking_negative_z, 4.0],
+            [0.7, -0.04, -0.13, looking_negative_z, 6.0],
+        ],
+            [  # sequence 2, shaking
+                [0.7, -0.04, -0.13, looking_negative_z, 1.0],
+                [0.7, -0.04, -0.13, looking_negative_z, 1.0]
+            ],
+            [  # sequence 3, retracting
+                [0.7, -0.04, -0.13, looking_negative_z, 2.0],
+                [0.7, -0.04, 0.1, looking_negative_z, 4.0],
+                #[0.5, 0, 0.1, looking_negative_z, 6.0],
+            ]
+
+        ]
+
+        processed_cmd_poses_body_frame = []
+
+        holding_quat = math_helpers.Quat.from_roll(np.pi / 2)
+
+        seq_1_poses_body_frame = []
+        for pose in cmd_poses_fiducial_frame[0]:  # for each pose in first move sequence
+            cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+            # print(type(cmd_pose_body_frame[0].position))
+            # print(cmd_pose_body_frame[0].position)
+            new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                   cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+            # print(new_pose_body_frame)
+            seq_1_poses_body_frame.append(new_pose_body_frame)
+        # print(seq_1_poses_body_frame)
+
+        # make the shaking motion at the second pose
+        print("seq 2")
+        pouring_quat_a = math_helpers.Quat.from_roll(-1.34)
+        pouring_quat_b = math_helpers.Quat.from_roll(-1.57)
+        shake_pose = cmd_poses_fiducial_frame[1][0]
+        print(f"shake pose fid frame{shake_pose}")
+        shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
+        print(f"shake pose body frame{shake_pose_body_frame}")
+        seq_2_poses_body_frame = [
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .2],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 1],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 5],
+        ]
+
+        print("seq 3")
+        seq_3_poses_body_frame = []
+        for pose in cmd_poses_fiducial_frame[2]:  # for each pose in first move sequence
+            cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+            # print(type(cmd_pose_body_frame[0].position))
+            # print(cmd_pose_body_frame[0].position)
+            new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                   cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+            # print(new_pose_body_frame)
+            seq_3_poses_body_frame.append(new_pose_body_frame)
+        # print(seq_1_poses_body_frame)
+
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_1_poses_body_frame, 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_2_poses_body_frame, 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_3_poses_body_frame, 0)
+
+        self.stow_arm()
         pass
+
 
     def _close_lid(self, *args):
         location = args[0][0]
@@ -431,19 +596,13 @@ class GraphNavInterface(object):
 
     def _upload_clusters(self, *args):
 
-        if not os.path.isfile("clusters.pkl"):
-            print("clusters.pkl does not exist")
+        if not os.path.isfile("fiducial_info.pkl"):
+            print("fiducial_info.pkl does not exist")
             return
 
-        if not os.path.isfile("kmeans_model.pkl"):
-            print("kmeans_model.pkl does not exist")
-            return
+        with open('fiducial_info.pkl', 'rb') as handle:
+            self.all_fiducial_to_pose_dict = pickle.load(handle)
 
-        with open('kmeans_model.pkl', 'rb') as handle:
-            self.vision_model.kmeans_model = pickle.load(handle)
-
-        with open('clusters.pkl', 'rb') as handle:
-            self.vision_model.clusters = pickle.load(handle)
 
     def _navigate_to_object(self, *args):
 
@@ -1099,6 +1258,7 @@ class GraphNavInterface(object):
 
         return (fiducial_to_pose)
 
+
     def _navigate_all_fiducials(self, *args):
 
         self._list_graph_waypoint_and_edge_ids([])
@@ -1112,14 +1272,14 @@ class GraphNavInterface(object):
 
         print("The waypoint list:", waypoints)
 
-        all_fiducial_to_pose_dict = defaultdict(lambda: [])
+        all_fiducial_to_pose_dict = defaultdict(list)
 
         # TODO: increase this (reduced for testing purposes)
         for i in range(1):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:4]:
+            for waypoint in waypoints[:20]:
                 if waypoint != None:
                     self._navigate_to([waypoint])
 
@@ -1134,6 +1294,9 @@ class GraphNavInterface(object):
 
         print("storing objects.")
         self.all_fiducial_to_pose_dict = all_fiducial_to_pose_dict
+        print("Dumping into pkl")
+        pickle.dump(all_fiducial_to_pose_dict, open("fiducial_info.pkl","wb"))
+        print("pickle dumped")
 
     def _hand_cam_search(self, *args):
         best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
@@ -1246,7 +1409,7 @@ class GraphNavInterface(object):
             (11) List Objects 
             (12) Move To Object.
             (13) Manipulate Object.
-            (14) Upload Clusters.
+            (14) Load saved fiducial information
             (15) Stand up
             (16) Pour grinds
             (17) Pour water
@@ -1256,6 +1419,8 @@ class GraphNavInterface(object):
             (21) pick coffee cup
             (22) Push button
             (23) Open gripper and stow
+            (24) Place cup on left side
+            (25) Place cup on right side
             (q) Exit.
             """)
 
@@ -1305,6 +1470,7 @@ def main(argv):
             "The robot's lease is currently in use. Check for a tablet connection or try again in a few seconds."
         )
         return False
+
 
 
 if __name__ == '__main__':
