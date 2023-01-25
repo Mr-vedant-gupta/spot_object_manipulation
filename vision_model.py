@@ -15,6 +15,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 MODEL_NAME = "handle-model"
+HAND_MODEL = 'object-hand-model'
 SERVER_NAME = "fetch-server"
 CONFIDENCE_THRESHOLD = 0.65
 
@@ -118,7 +119,7 @@ class VisionModel:
         self.objects = []
 
     def detect_objects_hand(self, n_seconds):
-        self.detect_objects(n_seconds, ["hand_color_image"])
+        return self.detect_objects(n_seconds, ["hand_color_image"])
     def detect_objects(self, n_seconds, image_sources = None):
         index = 0
         
@@ -137,6 +138,8 @@ class VisionModel:
                 self.objects.append((best_obj_label,seed_tform_obj))
                 index += 1
 
+            return best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source
+
     def get_object_and_image(self, image_sources):
         for source in image_sources:
             # Build a network compute request for this image source.
@@ -148,7 +151,7 @@ class VisionModel:
             #   if we should automatically rotate the image
             input_data = network_compute_bridge_pb2.NetworkComputeInputData(
                 image_source_and_service=image_source_and_service,
-                model_name=MODEL_NAME,
+                model_name=HAND_MODEL,
                 min_confidence=CONFIDENCE_THRESHOLD,
                 rotate_image=network_compute_bridge_pb2.NetworkComputeInputData.ROTATE_IMAGE_ALIGN_HORIZONTAL)
             # Server data: the service name
@@ -161,8 +164,8 @@ class VisionModel:
                 resp = self.network_compute_client.network_compute_bridge_command(
                     process_img_req)
             except Exception as e:
-                #print(e)
-                #print("Moving on!")
+                print(e)
+                print("Moving on!")
                 continue
 
 
@@ -174,10 +177,12 @@ class VisionModel:
             img = self.get_bounding_box_image(resp)
             image_full = resp.image_response
 
+            #TODO: Move back
+            cv2.imshow("Object", img)
+            cv2.waitKey(15)
             if len(resp.object_in_image) > 0:
                 # Show the image
-                cv2.imshow("Object", img)
-                cv2.waitKey(15)
+
                 for obj in resp.object_in_image:
                     # Get the label
                     # obj_label = obj.name.split('_label_')[-1]
@@ -240,7 +245,7 @@ class VisionModel:
             img = cv2.imdecode(img, -1)
 
         # Convert to BGR so we can draw colors
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        #img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
         # Draw bounding boxes in the image for all the detections.
         for obj in response.object_in_image:
