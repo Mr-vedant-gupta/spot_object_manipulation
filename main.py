@@ -37,19 +37,20 @@ from bosdyn.client.robot_command import RobotCommandBuilder
 from bosdyn.api import world_object_pb2
 from bosdyn.client.world_object import WorldObjectClient
 from navigation import estop_gui
-from skills.spot_manipulation_skills import execute_trajectory_from_poses_oo, close_lid
+from skills.spot_manipulation_skills import execute_trajectory_from_poses_oo, close_lid, execute_trajectory_from_poses
 from collections import defaultdict
 
 import numpy as np
 
-
-#HOSTNAME = "138.16.161.22"
+# HOSTNAME = "138.16.161.22"
 HOSTNAME = "192.168.80.3"
-#UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
-#UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
+# UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
+# UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
 UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
-#UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
+# UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
+
+
 class GraphNavInterface(object):
     """GraphNav service command line interface."""
 
@@ -76,7 +77,8 @@ class GraphNavInterface(object):
         self._manipulation_api_client = self._robot.ensure_client(ManipulationApiClient.default_service_name)
 
         self.vision_model = VisionModel(self._graph_nav_client, self._network_compute_client, self._robot)
-        self.fetch_model = FetchModel(self._robot, self.vision_model, self._robot_state_client, self._robot_command_client, self._manipulation_api_client)
+        self.fetch_model = FetchModel(self._robot, self.vision_model, self._robot_state_client,
+                                      self._robot_command_client, self._manipulation_api_client)
 
         # Boolean indicating the robot's power state.
         power_state = self._robot_state_client.get_robot_state().power_state
@@ -88,7 +90,7 @@ class GraphNavInterface(object):
 
         # Store the most recent knowledge of the state of the robot based on rpc calls.
         self._current_graph = None
-        self._current_edges = dict()  #maps to_waypoint to list(from_waypoint)
+        self._current_edges = dict()  # maps to_waypoint to list(from_waypoint)
         self._current_waypoint_snapshots = dict()  # maps id to waypoint snapshot
         self._current_edge_snapshots = dict()  # maps id to edge snapshot
         self._current_annotation_name_to_wp_id = dict()
@@ -134,9 +136,10 @@ class GraphNavInterface(object):
             '17': self._pour_water,
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
-            '20': self.goto_locale,
-            '21': self.hand_cam_search,
-            '22': self._push_button
+            '20': self._goto_locale,
+            '21': self._hand_cam_search,
+            '22': self._push_button,
+            '23': self._open_gripper_and_stow
         }
 
     def carry_pose(self):
@@ -163,7 +166,7 @@ class GraphNavInterface(object):
         self.toggle_power(should_power_on=True)
         blocking_stand(self._robot_command_client, timeout_sec=10)
 
-    def goto_locale(self, *args):
+    def _goto_locale(self, *args):
         location = args[0][0]
         if location not in self._skill_offset_dict['go_to'].keys():
             print(f"{location} not valid")
@@ -178,43 +181,138 @@ class GraphNavInterface(object):
         location = args[0][0]
         fid_number = self._object_fiducials_dict[location]
 
-        #This realigns the robot based on local fiducial tracking
-        #self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+        # This realigns the robot based on local fiducial tracking
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
 
         get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
 
-        looking_negative_z = math_helpers.Quat.from_pitch(np.pi/2)
+        looking_negative_z = math_helpers.Quat.from_pitch(np.pi / 2)
 
-        #In the fiducial frame
+        # In the fiducial frame
         cmd_poses_fiducial_frame = [[
-            [0.25,-0.07,0.1,looking_negative_z,5.0],
-            [0.25,-0.07,-0.05,looking_negative_z,10.0]
+            [0.25, -0.07, 0.1, looking_negative_z, 5.0],
+            [0.25, -0.07, -0.05, looking_negative_z, 10.0]
         ],
-        [
-            [0.25, -0.07, -0.05, looking_negative_z, 1.0]
-        ],
-        [
-            [0.25, -0.07, -0.05, looking_negative_z, 1.0],
-            [0.25, -0.07, 0.1, looking_negative_z,5.0]
-        ]
+            [
+                [0.25, -0.07, -0.05, looking_negative_z, 1.0]
+            ],
+            [
+                [0.25, -0.07, -0.05, looking_negative_z, 1.0],
+                [0.25, -0.07, 0.1, looking_negative_z, 5.0]
+            ]
         ]
 
         processed_cmd_poses_body_frame = []
         for l in cmd_poses_fiducial_frame:
-            #List consiting of (SE(3),timing)
+            # List consiting of (SE(3),timing)
             cmd_poses_body_frame = [(get_body_tform_goal_fid(cmd_pose[:-1]), cmd_pose[-1]) for cmd_pose in l]
             processed_cmd_poses_body_frame.append(cmd_poses_body_frame)
 
-        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[0], 1.0)
-        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[1], 0.0)
-        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[2], 1.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[0],
+                                         1.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[1],
+                                         0.0)
+        execute_trajectory_from_poses_oo(self._robot, self._robot_command_client, processed_cmd_poses_body_frame[2],
+                                         1.0)
 
         self.stow_arm()
 
+    def _open_gripper_and_stow(self, *args):
+        gripper_open = RobotCommandBuilder.claw_gripper_open_fraction_command(1.0)
+        cmd_id = self._robot_command_client.robot_command(gripper_open)
+        self.stow_arm()
 
     def _pour_grinds(self, *args):
-        pass
+        # location = args[0][0]
+        location = "coffee_pot"
+        fid_number = self._object_fiducials_dict[location]
 
+        # This realigns the robot based on local fiducial tracking
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+
+        get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
+
+        looking_negative_z = math_helpers.Quat.from_pitch(-np.pi / 2)
+
+        # In the fiducial frame
+        # cmd_poses_fiducial_frame = [[
+        #     [0.25, -0.07, 0.1, looking_negative_z, 5.0],
+        #     [0.25, -0.07, -0.05, looking_negative_z, 10.0]
+        #     ],
+        #     [
+        #         [0.25, -0.07, -0.05, looking_negative_z, 1.0],
+        #         [0.25, -0.07, 0.1, looking_negative_z, 5.0]
+        #     ]
+        # ]
+        cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
+            [0.5, 0, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.07, 0.1, looking_negative_z, 4.0],
+            [0.7, -0.07, -0.2, looking_negative_z, 6.0],
+        ],
+            [  # sequence 2, shaking
+                [0.7, -0.07, -0.2, looking_negative_z, 1.0],
+                [0.7, -0.07, -0.2, looking_negative_z, 1.0]
+            ],
+            [  # sequence 3, retracting
+                [0.7, -0.07, -0.2, looking_negative_z, 2.0],
+                [0.7, -0.07, 0.1, looking_negative_z, 4.0],
+                [0.5, 0, 0.1, looking_negative_z, 6.0],
+            ]
+
+        ]
+
+        processed_cmd_poses_body_frame = []
+
+        holding_quat = math_helpers.Quat.from_roll(np.pi / 2)
+
+        seq_1_poses_body_frame = []
+        for pose in cmd_poses_fiducial_frame[0]:  # for each pose in first move sequence
+            cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+            # print(type(cmd_pose_body_frame[0].position))
+            # print(cmd_pose_body_frame[0].position)
+            new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                   cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+            # print(new_pose_body_frame)
+            seq_1_poses_body_frame.append(new_pose_body_frame)
+        # print(seq_1_poses_body_frame)
+
+        # make the shaking motion at the second pose
+        print("seq 2")
+        pouring_quat_a = math_helpers.Quat.from_roll(-1.5)
+        pouring_quat_b = math_helpers.Quat.from_roll(-1.57)
+        shake_pose = cmd_poses_fiducial_frame[1][0]
+        print(f"shake pose fid frame{shake_pose}")
+        shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
+        print(f"shake pose body frame{shake_pose_body_frame}")
+        seq_2_poses_body_frame = [
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .2],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 1],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 5],
+        ]
+
+        print("seq 3")
+        seq_3_poses_body_frame = []
+        for pose in cmd_poses_fiducial_frame[2]:  # for each pose in first move sequence
+            cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
+
+            # print(type(cmd_pose_body_frame[0].position))
+            # print(cmd_pose_body_frame[0].position)
+            new_pose_body_frame = [cmd_pose_body_frame[0].position.x, cmd_pose_body_frame[0].position.y,
+                                   cmd_pose_body_frame[0].position.z, holding_quat, pose[-1]]
+            # print(new_pose_body_frame)
+            seq_3_poses_body_frame.append(new_pose_body_frame)
+        # print(seq_1_poses_body_frame)
+
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_1_poses_body_frame, 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_2_poses_body_frame, 0)
+        execute_trajectory_from_poses(self._robot, self._robot_command_client, seq_3_poses_body_frame, 0)
+
+        self.stow_arm()
+        pass
 
     def _pour_water(self, *args):
         pass
@@ -233,7 +331,6 @@ class GraphNavInterface(object):
         av_y = 0
         av_z = 0
 
-
         quat_list = []
 
         for pose in l:
@@ -241,33 +338,28 @@ class GraphNavInterface(object):
             av_y += pose.position.y
             av_z += pose.position.z
 
-            
             quat = [pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w]
             quat_list.append(quat)
-            
 
         av_x /= float(len(l))
         av_y /= float(len(l))
         av_z /= float(len(l))
 
-        
         q = np.transpose(np.array(quat_list))
-        #print(f"q shape is {q.shape}")
-        q_qt = np.matmul(q,np.transpose(q))
-        w, v  = np.linalg.eig(q_qt)
-        #print(f"eigen values: {w}")
-        #print(f"eigen vectors: {v}")
+        # print(f"q shape is {q.shape}")
+        q_qt = np.matmul(q, np.transpose(q))
+        w, v = np.linalg.eig(q_qt)
+        # print(f"eigen values: {w}")
+        # print(f"eigen vectors: {v}")
         largest_eigen_value_idx = np.argmax(w)
-        #print(f"largest eigen value idx: {largest_eigen_value_idx}")
-        largest_eigen_vector = v[:,largest_eigen_value_idx]
-        #print(f"largest eigen vector: {largest_eigen_vector}")
+        # print(f"largest eigen value idx: {largest_eigen_value_idx}")
+        largest_eigen_vector = v[:, largest_eigen_value_idx]
+        # print(f"largest eigen vector: {largest_eigen_vector}")
 
-        av_quat = Quat(w = largest_eigen_vector[3], x = largest_eigen_vector[0], y = largest_eigen_vector[1], z = largest_eigen_vector[2])
-        
+        av_quat = Quat(w=largest_eigen_vector[3], x=largest_eigen_vector[0], y=largest_eigen_vector[1],
+                       z=largest_eigen_vector[2])
 
-        return(SE3Pose(av_x, av_y, av_z, av_quat))# l[0].rotation))
-
-
+        return (SE3Pose(av_x, av_y, av_z, av_quat))  # l[0].rotation))
 
     def _go_to_fiducial_global(self, fid_number, offsets):
         x, y, z = offsets
@@ -285,7 +377,8 @@ class GraphNavInterface(object):
         # Get all fiducial objects (an object of a specific type).
         # request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
 
-        seed_tform_fiducial =  self.average_3d_pose(self.all_fiducial_to_pose_dict[fid_number])#self.all_fiducial_to_pose_dict[fid_number][0]
+        seed_tform_fiducial = self.average_3d_pose(
+            self.all_fiducial_to_pose_dict[fid_number])  # self.all_fiducial_to_pose_dict[fid_number][0]
 
         fiducial_tform_goto = SE3Pose(x, y, z, Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
@@ -297,7 +390,7 @@ class GraphNavInterface(object):
             [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _go_to_fiducial(self, fid_number, offsets):
-        x,y,z = offsets
+        x, y, z = offsets
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
@@ -306,26 +399,29 @@ class GraphNavInterface(object):
 
         seed_tform_vision = seed_tform_body * body_tform_vision
 
-        print("Seed_tform_body:",seed_tform_body)
+        print("Seed_tform_body:", seed_tform_body)
         world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
         # Get all fiducial objects (an object of a specific type).
         request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
         fiducial_objects = world_object_client.list_world_objects(
             object_type=request_fiducials).world_objects
 
-        #TODO: We need to loop through fiducial_objects and look for a valid fid_number instance
-        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[fid_number].parent_tform_child
-        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+        # TODO: We need to loop through fiducial_objects and look for a valid fid_number instance
+        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[
+            fid_number].parent_tform_child
+        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y,
+                                        vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
         seed_tform_fiducial = seed_tform_vision * vision_tform_fiducial
 
-        fiducial_tform_goto = SE3Pose(x,y,z,Quat())
+        fiducial_tform_goto = SE3Pose(x, y, z, Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
 
-        print("Seed tform fiducial",seed_tform_fiducial)
-        print("Seed tform goto:",seed_tform_goto)
+        print("Seed tform fiducial", seed_tform_fiducial)
+        print("Seed tform goto:", seed_tform_goto)
 
-        self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
+        self._navigate_to_anchor(
+            [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _list_objects(self, *args):
         if self.vision_model.clusters is None:
@@ -368,10 +464,10 @@ class GraphNavInterface(object):
             print("Failed to power on the robot, and cannot complete navigate to request.")
             return
 
-        thetas = [0,30,45,60,90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330]
+        thetas = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330]
 
         seed_T_goal = self.vision_model.clusters[args[0][0]][0]  # the list will only have one element
-        #seed_T_goal = SE3Pose(seed_T_goal[0],seed_T_goal[1],0,Quat())
+        # seed_T_goal = SE3Pose(seed_T_goal[0],seed_T_goal[1],0,Quat())
         print(seed_T_goal)
 
         nav_to_cmd_id = None
@@ -384,25 +480,26 @@ class GraphNavInterface(object):
 
             x = (1.0 * math.cos(math.radians(theta))) - (0 * math.sin(math.radians(theta)))
             y = (1.0 * math.sin(math.radians(theta))) + (0 * math.cos(math.radians(theta)))
-            goal_tform_goto = SE3Pose(x,y,0,Quat())
-            #print(goal_tform_goto)
+            goal_tform_goto = SE3Pose(x, y, 0, Quat())
+            # print(goal_tform_goto)
             seed_tform_goto = seed_T_goal * goal_tform_goto
             print(seed_tform_goto)
 
             # Issue the navigation command about twice a second such that it is easy to terminate the
             # navigation command (with estop or killing the program).
             try:
-                if not self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()]):
+                if not self._navigate_to_anchor(
+                        [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()]):
                     print("Could not successfuly navigate to object location.")
                     continue
-                #nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(seed_tform_goto.to_proto(), 5.0, command_id=nav_to_cmd_id)
+                # nav_to_cmd_id = self._graph_nav_client.navigate_to_anchor(seed_tform_goto.to_proto(), 5.0, command_id=nav_to_cmd_id)
 
             except ResponseError as e:
                 print("Error while navigating {}".format(e))
                 continue
-                #return False
+                # return False
 
-            #time.sleep(5.5)  # Sleep for second and a half to allow for command execution.
+            # time.sleep(5.5)  # Sleep for second and a half to allow for command execution.
 
             # the specified location is not attainable
             # if not self._check_success(nav_to_cmd_id):
@@ -416,13 +513,14 @@ class GraphNavInterface(object):
                 # Didn't find anything, keep searching.
                 continue
 
-            prediction = self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y,seed_tform_obj.z]])[0]
+            prediction = \
+            self.vision_model.kmeans_model.predict([[seed_tform_obj.x, seed_tform_obj.y, seed_tform_obj.z]])[0]
 
             if str(prediction) not in args[0][0]:
                 found_object = True
                 print("The object found does not match the cluster we specified")
                 continue
-            else: 
+            else:
                 print("Correct object found!.")
                 break
 
@@ -435,7 +533,7 @@ class GraphNavInterface(object):
     def __orient_about_fiducial(self, fiducial_name):
         # Navigate to the destination.
 
-        #TODO: Add code that makes spot rotate around the goal point to find the fiducial
+        # TODO: Add code that makes spot rotate around the goal point to find the fiducial
 
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
@@ -452,18 +550,21 @@ class GraphNavInterface(object):
         fiducial_objects = world_object_client.list_world_objects(
             object_type=request_fiducials).world_objects
 
-        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[fiducial_name].parent_tform_child
-        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[
+            fiducial_name].parent_tform_child
+        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y,
+                                        vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
         seed_tform_fiducial = seed_tform_vision * vision_tform_fiducial
 
-        fiducial_tform_goto = SE3Pose(0,0,1,Quat())
+        fiducial_tform_goto = SE3Pose(0, 0, 1, Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
 
-        self._navigate_to_anchor([seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
+        self._navigate_to_anchor(
+            [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
 
     def _manipulate_object(self, *args):
-        #self._navigate_to_object(args)
+        # self._navigate_to_object(args)
         label = None
         print("going to manipualte an object!")
 
@@ -471,17 +572,14 @@ class GraphNavInterface(object):
             label = "door_handle"
 
         elif "drawer" in args[0][0]:
-            label = "drawer"        
+            label = "drawer"
 
         elif "coffee_cup" in args[0][0]:
-            label = "coffee_cup"        
+            label = "coffee_cup"
         else:
             label = "coffee_pot"
         print("Object to manipulate:", label)
         self.fetch_model.run_fetch(label, args[0][0])
-
-
-
 
         # """Navigate to a specific waypoint."""
         # print("args: ", args)
@@ -530,12 +628,10 @@ class GraphNavInterface(object):
         #     # the robot down once it is finished.
         #     is_finished = self._check_success(nav_to_cmd_id)
 
-
         # # Power off the robot if appropriate.
         # if self._powered_on and not self._started_powered_on:
         #     # Sit the robot down + power off after the navigation command is complete.
         #     self.toggle_power(should_power_on=False)
-
 
     # def _test(self, *args):
     #     self.fetch_model.run_fetch("door_handle", None)
@@ -652,7 +748,7 @@ class GraphNavInterface(object):
             # The robot is not localized to the newly uploaded graph.
             print("\n")
             print("Upload complete! The robot is currently not localized to the map; please localize", \
-                   "the robot using commands (2) or (3) before attempting a navigation command.")
+                  "the robot using commands (2) or (3) before attempting a navigation command.")
 
     def _navigate_to_anchor(self, *args):
         """Navigate to a pose in seed frame, using anchors."""
@@ -822,19 +918,19 @@ class GraphNavInterface(object):
         '''
         Turn fiducial_tform_goal into an SE(3) Pose
         '''
-        x,y,z,rot= fiducial_tform_goal_list
-        fiducial_tform_goal = SE3Pose(x,y,z,rot)
-        print(f"fiducial_tform_goal: {fiducial_tform_goal}")
+        x, y, z, rot = fiducial_tform_goal_list
+        fiducial_tform_goal = SE3Pose(x, y, z, rot)
+        # print(f"fiducial_tform_goal: {fiducial_tform_goal}")
         '''
         First get seed_tform_fiducial based on local fiducial viewing
         '''
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
-        print(f"seed_tform_body {seed_tform_body}")
+        # print(f"seed_tform_body {seed_tform_body}")
 
         vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
-        print(f"Vision_tform_body {vision_tform_body}")
+        # print(f"Vision_tform_body {vision_tform_body}")
         body_tform_vision = vision_tform_body.inverse()
 
         world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
@@ -845,23 +941,23 @@ class GraphNavInterface(object):
 
         for fiducial_object in fiducial_objects:
             if fid_number in list(fiducial_object.transforms_snapshot.child_to_parent_edge_map.keys()):
-                vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[fid_number].parent_tform_child
+                vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[
+                    fid_number].parent_tform_child
                 break
-        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+        vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y,
+                                        vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
-        print(f"vision_tform_fiducial {vision_tform_fiducial}")
+        # print(f"vision_tform_fiducial {vision_tform_fiducial}")
 
         body_tform_fiducial = body_tform_vision * vision_tform_fiducial
-        print(f"body_tform_fiducial {body_tform_fiducial}")
+        # print(f"body_tform_fiducial {body_tform_fiducial}")
         body_tform_goal = body_tform_fiducial * fiducial_tform_goal
-        print(f"body_tform_goal {body_tform_goal}")
+        # print(f"body_tform_goal {body_tform_goal}")
 
-        fbody_tform_body = bosdyn.client.frame_helpers.get_a_tform_b(self._robot.get_frame_tree_snapshot(),"flat_body","body")
+        fbody_tform_body = bosdyn.client.frame_helpers.get_a_tform_b(self._robot.get_frame_tree_snapshot(), "flat_body",
+                                                                     "body")
         fbody_tform_goal = fbody_tform_body * body_tform_goal
-        return(fbody_tform_goal)
-
-
-
+        return (fbody_tform_goal)
 
     def toggle_power(self, should_power_on):
         """Power the robot on/off dependent on the current power state."""
@@ -937,13 +1033,14 @@ class GraphNavInterface(object):
         THRESHOLD = 4
         while self.thread_running:
             print("in while loop, thread running is: ", self.thread_running)
-            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(self.label)
+            dogtoy, image, vision_tform_dogtoy, seed_tform_obj, source = self.vision_model.get_object_and_image(
+                self.label)
             if dogtoy is not None:
-                #check if distance is within threshold
+                # check if distance is within threshold
                 print("a")
-                distance = (seed_tform_obj.position.x - self.loc.position.x)**2 + \
-                    (seed_tform_obj.position.y - self.loc.position.y)**2 + \
-                    (seed_tform_obj.position.z - self.loc.position.z)**2
+                distance = (seed_tform_obj.position.x - self.loc.position.x) ** 2 + \
+                           (seed_tform_obj.position.y - self.loc.position.y) ** 2 + \
+                           (seed_tform_obj.position.z - self.loc.position.z) ** 2
                 print("distance: ", distance)
                 if distance < THRESHOLD:
                     self.obj_found = True
@@ -952,26 +1049,25 @@ class GraphNavInterface(object):
                     break
         print("out of loop")
         self.thread_stopped = True
-        
-            
+
     def get_seed_tform_fiducial(self):
         """
         returns the poses (in the seed frame) of each fiducial seen by the robot in this pose
         """
-        #Get pose of robot
-        localization_state = self._graph_nav_client.get_localization_state() 
-        #Get body in seed frame
+        # Get pose of robot
+        localization_state = self._graph_nav_client.get_localization_state()
+        # Get body in seed frame
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
 
-        #get body in vision frame
+        # get body in vision frame
         vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
-        #calculate body from vision
+        # calculate body from vision
         body_tform_vision = vision_tform_body.inverse()
 
-        #calculate seed to vision frame
+        # calculate seed to vision frame
         seed_tform_vision = seed_tform_body * body_tform_vision
 
-        #get world client to get fiducials
+        # get world client to get fiducials
         world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
         # Get all fiducial objects (an object of a specific type).
         request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
@@ -980,26 +1076,28 @@ class GraphNavInterface(object):
 
         fiducial_to_pose = {}
 
-        for fiducial_object in fiducial_objects:        #iterates through fiducials
-            for fiducial_name in fiducial_object.transforms_snapshot.child_to_parent_edge_map.keys(): 
-                if "filtered_fiducial" in fiducial_name:        #pulls the correct transform
+        for fiducial_object in fiducial_objects:  # iterates through fiducials
+            for fiducial_name in fiducial_object.transforms_snapshot.child_to_parent_edge_map.keys():
+                if "filtered_fiducial" in fiducial_name:  # pulls the correct transform
                     print(f"I saw fiducial {fiducial_name}")
-                    vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[fiducial_name].parent_tform_child
-                    vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y, vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
+                    vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[
+                        fiducial_name].parent_tform_child
+                    vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y,
+                                                    vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
                     seed_tform_fiducial = seed_tform_vision * vision_tform_fiducial
 
-                    #Check if fiducial is close enough to body to count as detected
+                    # Check if fiducial is close enough to body to count as detected
                     body_tform_fiducial = body_tform_vision * vision_tform_fiducial
-                    dist_vect = np.array([body_tform_vision.position.x, body_tform_fiducial.position.y, body_tform_vision.position.z])
+                    dist_vect = np.array(
+                        [body_tform_vision.position.x, body_tform_fiducial.position.y, body_tform_vision.position.z])
                     dist = np.linalg.norm(dist_vect)
                     if dist > 4:
                         print(f"{fiducial_name} is {dist} away which is too far to count")
                     else:
                         fiducial_to_pose[fiducial_name] = seed_tform_fiducial
 
-        return(fiducial_to_pose)
-
+        return (fiducial_to_pose)
 
     def _navigate_all_fiducials(self, *args):
 
@@ -1008,19 +1106,20 @@ class GraphNavInterface(object):
         waypoints = list(self._current_annotation_name_to_wp_id.values())
 
         if waypoints == []:
-            print("waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
+            print(
+                "waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
             return
 
-        print("The waypoint list:",waypoints)
+        print("The waypoint list:", waypoints)
 
-        all_fiducial_to_pose_dict = defaultdict(lambda : [])
+        all_fiducial_to_pose_dict = defaultdict(lambda: [])
 
-        #TODO: increase this (reduced for testing purposes)
+        # TODO: increase this (reduced for testing purposes)
         for i in range(1):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:10]:
+            for waypoint in waypoints[:4]:
                 if waypoint != None:
                     self._navigate_to([waypoint])
 
@@ -1035,8 +1134,12 @@ class GraphNavInterface(object):
 
         print("storing objects.")
         self.all_fiducial_to_pose_dict = all_fiducial_to_pose_dict
-    def hand_cam_search(self, *args):
-        self.vision_model.detect_objects_hand(5)
+
+    def _hand_cam_search(self, *args):
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
+            5)
+        self.fetch_model.test_cup_pick(image_full, best_obj, best_vision_tform_obj)
+        self.carry_pose()
 
     def _navigate_all(self, *args):
 
@@ -1045,19 +1148,20 @@ class GraphNavInterface(object):
         waypoints = list(self._current_annotation_name_to_wp_id.values())
 
         if waypoints == []:
-            print("waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
+            print(
+                "waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
             return
 
-        print("The waypoint list:",waypoints)
+        print("The waypoint list:", waypoints)
 
-        #TODO: increase this (reduced for testing purposes)
+        # TODO: increase this (reduced for testing purposes)
         for i in range(1):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
             for waypoint in waypoints[:10]:
                 try:
-                    print("Waypoint:",waypoint)
+                    print("Waypoint:", waypoint)
                     self._navigate_to([waypoint])
                     print("Running vision model while at waypoint")
                     self.vision_model.detect_objects(5)
@@ -1068,7 +1172,7 @@ class GraphNavInterface(object):
         print("storing objects.")
         self.vision_model.save_objects_detected()
 
-        #check if each cluster is valid
+        # check if each cluster is valid
         # print("validating each cluster")
         # clusters = self.vision_model.clusters
         # new_clusters = {}
@@ -1103,16 +1207,13 @@ class GraphNavInterface(object):
         # pickle.dump(new_clusters, clusters_f)
         # clusters_f.close()
 
-
-
-        #temporary changes - remove!
+        # temporary changes - remove!
         # waypoints_1 = [waypoints[0]]
         # for wp in waypoints[1:]:
         #     if self._match_edge(self._current_edges, waypoints_1[-1], wp):
         #         waypoints_1.append(wp)
         # #--------------------------
         # self._navigate_route(waypoints_1)
-
 
     def _on_quit(self):
         """Cleanup on quit from the command line interface."""
@@ -1152,8 +1253,9 @@ class GraphNavInterface(object):
             (18) Close lid
             (19) Navigate all fiducials
             (20) Go to locale
-            (21) Search through hand_cam
+            (21) pick coffee cup
             (22) Push button
+            (23) Open gripper and stow
             (q) Exit.
             """)
 
@@ -1179,8 +1281,8 @@ class GraphNavInterface(object):
 
 def main(argv):
     """Run the command-line interface."""
-    #os.system('python navigation/estop_gui.py')
-    #Thread(target=estop_gui.main).start()
+    # os.system('python navigation/estop_gui.py')
+    # Thread(target=estop_gui.main).start()
     # Setup and authenticate the robot.
     sdk = bosdyn.client.create_standard_sdk('GraphNavClient')
     sdk.register_service_client(NetworkComputeBridgeClient)

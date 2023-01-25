@@ -41,7 +41,7 @@ def close_lid(robot, command_client):
     ]
 
     for cmd_pose in cmd_poses:
-        execute_trajectory_from_poses(robot, command_client, cmd_pose,gripper_amount=0)
+        execute_trajectory_from_poses(robot, command_client, cmd_pose, gripper_amount=0)
 
 def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, gripper_amount):
     robot.time_sync.wait_for_sync()
