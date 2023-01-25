@@ -51,6 +51,120 @@ class FetchModel:
         # Wait until the robot reports that it is at the goal.
         block_for_trajectory_cmd(self.robot_command_client, cmd_id, timeout_sec=15, verbose=True)
 
+    def test_cup_pick(self,image, best_obj, vision_tform_obj):
+        grasp_completed = False
+        while not grasp_completed:
+
+
+            # Detected Object. Request pick up.
+
+            # Stow the arm in case it is deployed
+            stow_cmd = RobotCommandBuilder.arm_stow_command()
+            self.robot_command_client.robot_command(stow_cmd)
+
+            #self.move_robot_to_location(vision_tform_obj)
+
+            # The ML result is a bounding box.  Find the center.
+            (center_px_x,
+             center_px_y) = self.vision_model.find_center_px(best_obj.image_properties.coordinates)
+
+            # Request Pick Up on that pixel.
+            pick_vec = geometry_pb2.Vec2(x=center_px_x, y=center_px_y)
+            grasp = manipulation_api_pb2.PickObjectInImage(
+                pixel_xy=pick_vec,
+                transforms_snapshot_for_camera=image.shot.transforms_snapshot,
+                frame_name_image_sensor=image.shot.frame_name_image_sensor,
+                camera_model=image.source.pinhole)
+
+            # We can specify where in the gripper we want to grasp. About halfway is generally good for
+            # small objects like this. For a bigger object like a shoe, 0 is better (use the entire
+            # gripper)
+            grasp.grasp_params.grasp_palm_to_fingertip = 0.2
+
+            # Tell the grasping system that we want a top-down grasp.
+
+            # Add a constraint that requests that the x-axis of the gripper is pointing in the
+            # negative-z direction in the vision frame.
+
+            # The axis on the gripper is the x-axis.
+
+            axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = grasp_directions("coffee_cup")
+
+            # The axis in the vision frame is the negative z-axis
+
+            # Add the vector constraint to our proto.
+            constraint = grasp.grasp_params.allowable_orientation.add()
+            constraint.vector_alignment_with_tolerance.axis_on_gripper_ewrt_gripper.CopyFrom(
+                axis_on_gripper_ewrt_gripper)
+            constraint.vector_alignment_with_tolerance.axis_to_align_with_ewrt_frame.CopyFrom(
+                axis_to_align_with_ewrt_vision)
+
+            # We'll take anything within about 15 degrees for top-down or horizontal grasps.
+            constraint.vector_alignment_with_tolerance.threshold_radians = 0.25
+
+            # Specify the frame we're using.
+            grasp.grasp_params.grasp_params_frame_name = frame_helpers.VISION_FRAME_NAME
+
+            # Build the proto
+            grasp_request = manipulation_api_pb2.ManipulationApiRequest(
+                pick_object_in_image=grasp)
+
+            # Send the request
+            print('Sending grasp request...')
+            cmd_response = self.manipulation_api_client.manipulation_api_command(
+                manipulation_api_request=grasp_request)
+
+            # Wait for the grasp to finish
+            grasp_done = False
+            failed = False
+            time_start = time.time()
+
+            while not grasp_done:
+                feedback_request = manipulation_api_pb2.ManipulationApiFeedbackRequest(
+                    manipulation_cmd_id=cmd_response.manipulation_cmd_id)
+
+                # Send a request for feedback
+                response = self.manipulation_api_client.manipulation_api_feedback_command(
+                    manipulation_api_feedback_request=feedback_request)
+
+                current_state = response.current_state
+                current_time = time.time() - time_start
+                # if current_time > 20:
+                #     failed = False
+                #     break
+                print('Current state ({time:.1f} sec): {state}'.format(
+                    time=current_time,
+                    state=manipulation_api_pb2.ManipulationFeedbackState.Name(
+                        current_state)),
+                    end='                \r')
+                sys.stdout.flush()
+
+                failed_states = [manipulation_api_pb2.MANIP_STATE_GRASP_FAILED,
+                                 manipulation_api_pb2.MANIP_STATE_GRASP_PLANNING_NO_SOLUTION,
+                                 manipulation_api_pb2.MANIP_STATE_GRASP_FAILED_TO_RAYCAST_INTO_MAP,
+                                 manipulation_api_pb2.MANIP_STATE_GRASP_PLANNING_WAITING_DATA_AT_EDGE]
+
+                failed = current_state in failed_states
+                grasp_done = current_state == manipulation_api_pb2.MANIP_STATE_GRASP_SUCCEEDED or failed
+
+                time.sleep(0.1)
+
+            grasp_completed = not failed
+            print(grasp_completed)
+            if not grasp_completed:
+                print("Didnt find object")
+                continue
+
+            # Move the arm to a carry position.
+
+
+            print("COFFEE CUP")
+            carry_cmd = RobotCommandBuilder.arm_carry_command()
+            self.robot_command_client.robot_command_async(carry_cmd)
+
+            time.sleep(2)
+            print("Finished carrying coffee cup.")
+
     def run_fetch(self, label, cluster_name):
         # This script assumes the robot is already standing via the tablet.  We'll take over from the
         # tablet.
