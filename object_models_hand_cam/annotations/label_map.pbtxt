@@ -4,5 +4,5 @@ item {
 }
 item {
     id: 2
-    name: 'water_cup'
+    name: 'useless_cup'
 }

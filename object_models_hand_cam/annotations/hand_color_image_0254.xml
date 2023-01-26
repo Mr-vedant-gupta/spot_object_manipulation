@@ -1,7 +1,7 @@
 <annotation>
 	<folder>images</folder>
 	<filename>hand_color_image_0254.jpg</filename>
-	<path>/home/sorozco0612/dev/spot_object_manipulation/object_models_hand_cam/images/hand_color_image_0254.jpg</path>
+	<path>/home/sergio/classes/Lab/spot_object_manipulation/object_models_hand_cam/images/hand_color_image_0254.jpg</path>
 	<source>
 		<database>Unknown</database>
 	</source>
@@ -12,7 +12,7 @@
 	</size>
 	<segmented>0</segmented>
 	<object>
-		<name>water_cup</name>
+		<name>useless_cup</name>
 		<pose>Unspecified</pose>
 		<truncated>0</truncated>
 		<difficult>0</difficult>

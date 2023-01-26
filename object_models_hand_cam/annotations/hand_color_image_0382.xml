@@ -24,7 +24,7 @@
 		</bndbox>
 	</object>
 	<object>
-		<name>water_cup</name>
+		<name>useless_cup</name>
 		<pose>Unspecified</pose>
 		<truncated>1</truncated>
 		<difficult>0</difficult>
