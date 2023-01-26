@@ -29,11 +29,14 @@ def close_lid(robot, command_client):
     hooking_quat = math_helpers.Quat.from_yaw(1.57)
 
     cmd_poses = [[
-        [0.75, 0, 0.25, neutral_quat, 0],
-        [0.75, 0, 0.38, neutral_quat, 1.0],  # ericpour
-        [0.75, 0, 0.38, neutral_quat, 2.0],  # Raise hand up
-        [1.00, 0, 0.38, neutral_quat, 3.0],  # extend arm
-        [0.35, .75, 0.38, hooking_quat, 7.0] # Move hand over coffee machine
+            [0.75, 0, 0.25, neutral_quat, 0],
+            [0.75, 0, 0.38, neutral_quat, 1.0],
+            [0.75, 0, 0.38, neutral_quat, 2.0],  # Raise hand up
+            [1.00, 0, 0.38, neutral_quat, 3.0]
+        ],  # extend arm
+        [
+            [0.5, .75, 0.38, hooking_quat, 1.0],
+            [0.35, .75, 0.38, hooking_quat, 2.0] # Move hand over coffee machine
         ],
         [[0.35, .75, 0.38, hooking_quat, 0],
         [0.75, 0, 0.38, neutral_quat, 1.0],

@@ -42,11 +42,11 @@ from collections import defaultdict
 
 import numpy as np
 
-# HOSTNAME = "138.16.161.22"
-HOSTNAME = "192.168.80.3"
+HOSTNAME = "138.16.161.22"
+# HOSTNAME = "192.168.80.3"
 # UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
-# UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
-UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
+# UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
 # UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 
@@ -99,14 +99,14 @@ class GraphNavInterface(object):
                                        'table': 'filtered_fiducial_529',
                                        'drawers': 'filtered_fiducial_535'
                                        }
-        self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.9)},
-                                   'push_button': {'coffee_pot': (0, 0, 0.9)},
-                                   'pour_water': {'coffee_pot': (0, 0, 0.9)},
+        self._skill_offset_dict = {'pour_grinds': {'coffee_pot': (0, 0, 0.8)},
+                                   'push_button': {'coffee_pot': (0, 0, 0.8)},
+                                   'pour_water': {'coffee_pot': (0, 0, 0.8)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
-                                   'go_to': {'coffee_pot': (0, 0, 0.9),
-                                             'cupboard': (0, 0, 0.9),
-                                             'table': (0, 0, 0.9),
-                                             'drawers': (0, 0, 0.9),
+                                   'go_to': {'coffee_pot': (0, 0, 0.81),
+                                             'cupboard': (0, 0, 0.95),
+                                             'table': (0, 0, 0.95),
+                                             'drawers': (0, 0, 0.95),
                                              }
                                    }
 
@@ -182,7 +182,8 @@ class GraphNavInterface(object):
 
 
     def _push_button(self, *args):
-        location = args[0][0]
+        # location = args[0][0]
+        location = 'coffee_pot'
         fid_number = self._object_fiducials_dict[location]
 
         # This realigns the robot based on local fiducial tracking
@@ -194,15 +195,15 @@ class GraphNavInterface(object):
 
         # In the fiducial frame
         cmd_poses_fiducial_frame = [[
-            [0.25, -0.07, 0.1, looking_negative_z, 5.0],
-            [0.25, -0.07, -0.05, looking_negative_z, 10.0]
+            [0.25, -0.09, 0.1, looking_negative_z, 3.0],
+            [0.25, -0.09, -0.05, looking_negative_z, 6.0]
         ],
             [
-                [0.25, -0.07, -0.05, looking_negative_z, 1.0]
+                [0.25, -0.09, -0.05, looking_negative_z, 1.0]
             ],
             [
-                [0.25, -0.07, -0.05, looking_negative_z, 1.0],
-                [0.25, -0.07, 0.1, looking_negative_z, 5.0]
+                [0.25, -0.09, -0.05, looking_negative_z, 3.0],
+                [0.25, -0.09, 0.1, looking_negative_z, 5.0]
             ]
         ]
 
@@ -241,13 +242,13 @@ class GraphNavInterface(object):
 
         # In the fiducial frame
         cmd_poses_fiducial_frame = [[
-            [0.5, 0.25, 0, looking_negative_z, 5.0],
-            [0.5, 0.25, -0.15, looking_negative_z, 10.0],
-            [0.32, 0.25, -0.15, looking_negative_z, 15.0]
+            [0.5, 0.25, 0, looking_negative_z, 3.0],
+            [0.5, 0.25, -0.15, looking_negative_z, 5.0],
+            [0.34, 0.25, -0.15, looking_negative_z, 7.0]
         ],
         [
-            [0.32, 0.25, -0.15, looking_negative_z, 5],
-            [0.32, 0.20, .15, looking_negative_z, 10],
+            [0.34, 0.3, -0.15, looking_negative_z, 2],
+            [0.34, 0.33, .08, looking_negative_z, 3],
         ]
         ]
 
@@ -287,13 +288,13 @@ class GraphNavInterface(object):
 
         # In the fiducial frame
         cmd_poses_fiducial_frame = [[
-            [0.5, -0.5, 0, looking_negative_z, 5.0],
-            [0.5, -0.5, -0.15, looking_negative_z, 10.0],
-            [0.32, -0.5, -0.15, looking_negative_z, 15.0]
+            [0.5, -0.23, 0, looking_negative_z, 3.0],
+            [0.5, -0.23, -0.15, looking_negative_z, 5.0],
+            [0.34, -0.23, -0.15, looking_negative_z, 7.0]
         ],
             [
-                [0.32, -0.5, -0.15, looking_negative_z, 5],
-                [0.32, -0.55, .15, looking_negative_z, 10],
+                [0.34, -0.19, -0.15, looking_negative_z, 2],
+                [0.34, -0.19, .08, looking_negative_z, 3],
             ]
         ]
 
@@ -323,7 +324,7 @@ class GraphNavInterface(object):
         fid_number = self._object_fiducials_dict[location]
 
         # This realigns the robot based on local fiducial tracking
-        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
+        # self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['pour_water'][location])
 
         get_body_tform_goal_fid = lambda position_rot_list: self.get_body_tform_goal(position_rot_list, fid_number)
 
@@ -331,19 +332,18 @@ class GraphNavInterface(object):
 
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
             #[0.5, 0, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.07, 0.1, looking_negative_z, 4.0],
-            [0.7, -0.07, -0.23, looking_negative_z, 6.0],
+            [0.7, -0.05, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.05, -0.26, looking_negative_z, 3.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.07, -0.23, looking_negative_z, 1.0],
-                [0.7, -0.07, -0.23, looking_negative_z, 1.0]
+                [0.7, -0.05, -0.26, looking_negative_z, 1.0],
+                [0.7, -0.05, -0.26, looking_negative_z, 2.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.07, -0.23, looking_negative_z, 2.0],
-                [0.7, -0.07, 0.1, looking_negative_z, 4.0],
+                [0.7, -0.05, -0.26, looking_negative_z, 2.0],
+                [0.7, -0.05, 0.1, looking_negative_z, 3.0],
                 #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
-
         ]
 
         processed_cmd_poses_body_frame = []
@@ -375,8 +375,8 @@ class GraphNavInterface(object):
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 1],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 5],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 5],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
 
         print("seq 3")
@@ -413,16 +413,16 @@ class GraphNavInterface(object):
 
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
             #[0.5, 0, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.04, 0.1, looking_negative_z, 4.0],
-            [0.7, -0.04, -0.13, looking_negative_z, 6.0],
+            [0.7, -0.01, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.01, -0.13, looking_negative_z, 3.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.04, -0.13, looking_negative_z, 1.0],
-                [0.7, -0.04, -0.13, looking_negative_z, 1.0]
+                [0.7, -0.01, -0.13, looking_negative_z, 1.0],
+                [0.7, -0.01, -0.13, looking_negative_z, 1.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.04, -0.13, looking_negative_z, 2.0],
-                [0.7, -0.04, 0.1, looking_negative_z, 4.0],
+                [0.7, -0.01, -0.13, looking_negative_z, 2.0],
+                [0.7, -0.01, 0.1, looking_negative_z, 3.0],
                 #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
 
@@ -457,8 +457,8 @@ class GraphNavInterface(object):
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 1],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 5],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 5],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
 
         print("seq 3")
@@ -483,7 +483,8 @@ class GraphNavInterface(object):
 
 
     def _close_lid(self, *args):
-        location = args[0][0]
+        # location = args[0][0]
+        location = 'coffee_pot'
         print(f"location is {location}")
         print(self._object_fiducials_dict[location])
         print(self._skill_offset_dict['close_lid'][location])
@@ -558,6 +559,7 @@ class GraphNavInterface(object):
         x, y, z = offsets
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
+        print(f"seed_tform_body{seed_tform_body}")
 
         vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
         body_tform_vision = vision_tform_body.inverse()
@@ -571,9 +573,15 @@ class GraphNavInterface(object):
         fiducial_objects = world_object_client.list_world_objects(
             object_type=request_fiducials).world_objects
 
-        # TODO: We need to loop through fiducial_objects and look for a valid fid_number instance
-        vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[
-            fid_number].parent_tform_child
+
+        for fiducial_object in fiducial_objects:
+            if fid_number in list(fiducial_object.transforms_snapshot.child_to_parent_edge_map.keys()):
+                vision_tform_fiducial = fiducial_object.transforms_snapshot.child_to_parent_edge_map[
+                    fid_number].parent_tform_child
+                break
+        # # TODO: We need to loop through fiducial_objects and look for a valid fid_number instance
+        # vision_tform_fiducial = fiducial_objects[0].transforms_snapshot.child_to_parent_edge_map[
+        #     fid_number].parent_tform_child
         vision_tform_fiducial = SE3Pose(vision_tform_fiducial.position.x, vision_tform_fiducial.position.y,
                                         vision_tform_fiducial.position.z, vision_tform_fiducial.rotation)
 
@@ -856,7 +864,7 @@ class GraphNavInterface(object):
         # Update and print waypoints and edges
         self._current_annotation_name_to_wp_id, self._current_edges = graph_nav_util.update_waypoints_and_edges(
             graph, localization_id)
-        print("waypoints:", self._current_annotation_name_to_wp_id)
+        # print("waypoints:", self._current_annotation_name_to_wp_id)
 
     def _upload_graph_and_snapshots(self, *args):
         """Upload the graph and snapshots to the robot."""
@@ -1270,7 +1278,7 @@ class GraphNavInterface(object):
                 "waypoints list is empty! Upload the graph  and initialise the robot to fiducial before calling this function")
             return
 
-        print("The waypoint list:", waypoints)
+        # print("The waypoint list:", waypoints)
 
         all_fiducial_to_pose_dict = defaultdict(list)
 
