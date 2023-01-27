@@ -37,7 +37,7 @@ from bosdyn.client.robot_command import RobotCommandBuilder
 from bosdyn.api import world_object_pb2
 from bosdyn.client.world_object import WorldObjectClient
 from navigation import estop_gui
-from skills.spot_manipulation_skills import execute_trajectory_from_poses_oo, close_lid, execute_trajectory_from_poses
+from skills.spot_manipulation_skills import execute_trajectory_from_poses_oo, close_lid, look_around, execute_trajectory_from_poses
 from collections import defaultdict
 
 import numpy as np
@@ -137,13 +137,98 @@ class GraphNavInterface(object):
             '18': self._close_lid,
             '19': self._navigate_all_fiducials,
             '20': self._goto_locale,
-            '21': self._hand_cam_search,
+            '21': self._pick_cup,
             '22': self._push_button,
             '23': self._open_gripper_and_stow,
             '24': self._place_cup_left,
-            '25': self._place_cup_right
+            '25': self._place_cup_right,
+            '26': self._execute_plan,
+            '27': self._cam_search,
+            '28': self._find_where_objects_are,
+            '29': self._generate_aosm_and_plan
 
         }
+
+    def _generate_aosm_and_plan(self, *args):
+        #identify where the fiducials are
+        #self._navigate_all_fiducials()
+        self._upload_clusters()
+
+        #Find where the objects are at
+        object_locale_dict = self._find_where_objects_are()
+
+        #generate plan based on where objects are at
+        #First we get the water cup (useless_cup), then we get coffee grinds cup
+        plan = [
+            [self._goto_locale, [object_locale_dict["useless_cup"]]],
+            [self._pick_cup, []],
+            [self._goto_locale, ["coffee_pot"]],
+            [self._pour_water, ["coffee_pot"]],
+            [self._place_cup_left,["coffee_pot"]],
+            [self._goto_locale,[object_locale_dict["coffee_cup"]]],
+            [self._pick_cup, []],
+            [self._goto_locale, ["coffee_pot"]],
+            [self._pour_grinds, ["coffee_pot"]],
+            [self._place_cup_right,["coffee_pot"]],
+            [self._close_lid, ["coffee_pot"]],
+            [self._push_button, ["coffee_pot"]]
+        ]
+
+        for step in plan:
+            print(f"Executing step {step[0]} on {step[1]}")
+            step[0](step[1])
+
+    def _find_where_objects_are(self, *args):
+        locales_to_vist = list(self._object_fiducials_dict.keys())
+        object_locale_dict = {}
+        for locale in locales_to_vist:
+            self._goto_locale([locale])
+            found_object = self._cam_search()
+            if found_object != None:
+                object_locale_dict[found_object] = locale
+            self.stow_arm()
+
+        print(object_locale_dict)
+        return(object_locale_dict)
+
+
+
+    def _cam_search(self, *args):
+        ret_obj = None
+        look_around(self._robot, self._robot_command_client, 0)
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
+            5)
+        print(f"I see {best_obj_label}")
+        ret_obj = best_obj_label
+
+        look_around(self._robot, self._robot_command_client, 1)
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
+            5)
+        print(f"I see {best_obj_label}")
+        if best_obj_label != None:
+            ret_obj = best_obj_label
+        #self.stow_arm()
+        return(best_obj_label)
+
+    def _execute_plan(self, *args):
+        plan = [
+            [self._goto_locale, ["drawers"]],
+            [self._pick_cup, []],
+            [self._goto_locale, ["coffee_pot"]],
+            [self._pour_grinds, ["coffee_pot"]],
+            [self._place_cup_left,["coffee_pot"]],
+            [self._goto_locale, ["table"]],
+            [self._pick_cup, []],
+            [self._goto_locale, ["coffee_pot"]],
+            [self._pour_water, ["coffee_pot"]],
+            [self._place_cup_right,["coffee_pot"]],
+            [self._close_lid, ["coffee_pot"]],
+            [self._push_button, ["coffee_pot"]]
+        ]
+
+        for step in plan:
+            print(f"Executing step {step[0]} on {step[1]}")
+            step[0](step[1])
 
     def carry_pose(self):
         # Stow the arm
@@ -229,7 +314,7 @@ class GraphNavInterface(object):
 
 
     def _place_cup_left(self, *args):
-        location = args[0][0]
+        location = "coffee_pot"#args[0][0]
         fid_number = self._object_fiducials_dict[location]
 
         # This realigns the robot based on local fiducial tracking
@@ -275,7 +360,7 @@ class GraphNavInterface(object):
         self.stow_arm()
 
     def _place_cup_right(self, *args):
-        location = args[0][0]
+        location = "coffee_pot"#args[0][0]
         fid_number = self._object_fiducials_dict[location]
 
         # This realigns the robot based on local fiducial tracking
@@ -491,6 +576,7 @@ class GraphNavInterface(object):
         self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['close_lid'][location])
         close_lid(self._robot, self._robot_command_client)
         self.stow_arm()
+        self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['push_button'][location])
 
     def average_3d_pose(self, l):
         av_x = 0
@@ -1306,7 +1392,7 @@ class GraphNavInterface(object):
         pickle.dump(all_fiducial_to_pose_dict, open("fiducial_info.pkl","wb"))
         print("pickle dumped")
 
-    def _hand_cam_search(self, *args):
+    def _pick_cup(self, *args):
         best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
             5)
         self.fetch_model.test_cup_pick(image_full, best_obj, best_vision_tform_obj)
@@ -1429,6 +1515,10 @@ class GraphNavInterface(object):
             (23) Open gripper and stow
             (24) Place cup on left side
             (25) Place cup on right side
+            (26) Execute a plan
+            (27) Search for object with handcam locally
+            (28) Find where objects are via vision
+            (29) Generate an AOSM and execute a plan
             (q) Exit.
             """)
 

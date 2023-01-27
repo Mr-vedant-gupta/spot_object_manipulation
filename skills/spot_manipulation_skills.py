@@ -23,6 +23,20 @@ from bosdyn.client.robot_command import RobotCommandBuilder, RobotCommandClient,
 from bosdyn.util import seconds_to_duration
 
 
+def look_around(robot, command_client, idx):
+    neutral_quat = math_helpers.Quat.from_roll(0)
+    hooking_quat1 = math_helpers.Quat.from_pitch(0.5)
+    hooking_quat2 = math_helpers.Quat.from_pitch(0.8)
+
+    cmd_poses = [[
+            [0.8, 0, 0.5, hooking_quat1, 3.0],
+    ],
+        [
+            [0.8, 0, 0.5, hooking_quat2, 3.0],
+        ],
+    ]
+
+    execute_trajectory_from_poses(robot, command_client, cmd_poses[idx], gripper_amount=1.0,timeout=5)
 
 def close_lid(robot, command_client):
     neutral_quat = math_helpers.Quat.from_roll(0)
@@ -44,9 +58,9 @@ def close_lid(robot, command_client):
     ]
 
     for cmd_pose in cmd_poses:
-        execute_trajectory_from_poses(robot, command_client, cmd_pose, gripper_amount=0)
+        execute_trajectory_from_poses(robot, command_client, cmd_pose, gripper_amount=0,timeout=5)
 
-def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, gripper_amount):
+def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, gripper_amount, timeout=10):
     robot.time_sync.wait_for_sync()
 
     assert robot.has_arm(), "Robot requires an arm to run this example."
@@ -98,7 +112,8 @@ def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, g
     cmd_id = command_client.robot_command(robot_command)
 
     # Wait until the arm arrives at the goal.
-    while True:
+    start = time.time()
+    while time.time() - start < timeout:
         feedback_resp = command_client.robot_command_feedback(cmd_id)
         print('Distance to final point: ' + '{:.2f} meters'.format(
             feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
@@ -112,7 +127,7 @@ def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, g
         time.sleep(0.1)
 
 
-def execute_trajectory_from_poses(robot, command_client, cmd_poses, gripper_amount):
+def execute_trajectory_from_poses(robot, command_client, cmd_poses, gripper_amount, timeout=10):
     robot.time_sync.wait_for_sync()
 
     assert robot.has_arm(), "Robot requires an arm to run this example."
@@ -188,7 +203,8 @@ def execute_trajectory_from_poses(robot, command_client, cmd_poses, gripper_amou
     cmd_id = command_client.robot_command(robot_command)
 
     # Wait until the arm arrives at the goal.
-    while True:
+    start = time.time()
+    while time.time() - start < timeout:
         feedback_resp = command_client.robot_command_feedback(cmd_id)
         print('Distance to final point: ' + '{:.2f} meters'.format(
             feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
