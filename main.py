@@ -203,7 +203,7 @@ class GraphNavInterface(object):
             ],
             [
                 [0.25, -0.09, -0.05, looking_negative_z, 3.0],
-                [0.25, -0.09, 0.1, looking_negative_z, 5.0]
+                [0.25, -0.2, 0.07, looking_negative_z, 5.0]
             ]
         ]
 
@@ -371,10 +371,10 @@ class GraphNavInterface(object):
         shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
         print(f"shake pose body frame{shake_pose_body_frame}")
         seq_2_poses_body_frame = [
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .2],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 3],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, 3.4],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 3.6],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, 3.8],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 5],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
