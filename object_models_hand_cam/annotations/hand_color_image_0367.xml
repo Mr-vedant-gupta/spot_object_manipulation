@@ -35,4 +35,16 @@
 			<ymax>416</ymax>
 		</bndbox>
 	</object>
+	<object>
+		<name>noodle_handle</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>260</xmin>
+			<ymin>325</ymin>
+			<xmax>284</xmax>
+			<ymax>382</ymax>
+		</bndbox>
+	</object>
 </annotation>
