@@ -54,7 +54,7 @@ class FetchModel:
 
     def open_noodle_door(self,image, best_obj, vision_tform_obj):
 
-        self.__grasp_object(image,best_obj, vision_tform_obj)
+        self.__grasp_object(image,best_obj, vision_tform_obj, "noodle_handle")
 
         # Move the arm to a carry position.
         print("COFFEE CUP")
@@ -66,8 +66,15 @@ class FetchModel:
         self.robot_command_client.robot_command_async(command)
 
         # Wait for the carry command to finish
-        time.sleep(2)
+        time.sleep(5)
         print("Finished opening noodle door")
+
+        gripper_open = RobotCommandBuilder.claw_gripper_open_fraction_command(1.0)
+        cmd_id = self.robot_command_client.robot_command(gripper_open)
+
+        # Wait for the carry command to finish
+        time.sleep(2)
+        print("Finished releasing grip")
 
         # Stow the arm in case it is deployed
         stow_cmd = RobotCommandBuilder.arm_stow_command()
@@ -77,7 +84,7 @@ class FetchModel:
         print("Finished stowing arm")
 
     def test_cup_pick(self,image, best_obj, vision_tform_obj):
-        self.__grasp_object(image,best_obj, vision_tform_obj)
+        self.__grasp_object(image,best_obj, vision_tform_obj, "coffee_cup")
 
         print("COFFEE CUP")
         carry_cmd = RobotCommandBuilder.arm_carry_command()
@@ -86,7 +93,7 @@ class FetchModel:
         time.sleep(2)
         print("Finished carrying coffee cup.")
 
-    def __grasp_object(self,image, best_obj,vision_tform_obj):
+    def __grasp_object(self,image, best_obj,vision_tform_obj, label):
         grasp_completed = False
         while not grasp_completed:
 
@@ -123,7 +130,7 @@ class FetchModel:
 
             # The axis on the gripper is the x-axis.
 
-            axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = grasp_directions("coffee_cup")
+            axis_on_gripper_ewrt_gripper, axis_to_align_with_ewrt_vision = grasp_directions(label)
 
             # The axis in the vision frame is the negative z-axis
 

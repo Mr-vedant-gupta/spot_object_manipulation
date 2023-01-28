@@ -42,11 +42,12 @@ from collections import defaultdict
 
 import numpy as np
 
-HOSTNAME = "138.16.161.22"
-# HOSTNAME = "192.168.80.3"
+#HOSTNAME = "138.16.161.22"
+HOSTNAME = "192.168.80.3"
 # UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
-UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
-# UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
+#UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
+#UPLOAD_FILEPATH = "./navigation/maps/cit121_115_02/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
 # UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 
@@ -104,7 +105,7 @@ class GraphNavInterface(object):
                                    'pour_water': {'coffee_pot': (0, 0, 0.8)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
                                    'go_to': {'coffee_pot': (0, 0, 0.81),
-                                             'cupboard': (0, 0, 0.95),
+                                             'cupboard': (0, 0, 1.5),
                                              'table': (0, 0, 0.95),
                                              'drawers': (0, 0, 0.95),
                                              }
@@ -149,13 +150,11 @@ class GraphNavInterface(object):
             '30': self._open_noodle_door,
 
         }
-    def open_noodle_door(self, *args):
+    def _open_noodle_door(self, *args):
 
         best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(5,"noodle_handle")
 
         self.fetch_model.open_noodle_door(image_full, best_obj, best_vision_tform_obj)
-
-        self.carry_pose()
 
     def _generate_aosm_and_plan(self, *args):
         #identify where the fiducials are
@@ -169,12 +168,12 @@ class GraphNavInterface(object):
         #First we get the water cup (useless_cup), then we get coffee grinds cup
         plan = [
             [self._goto_locale, [object_locale_dict["useless_cup"]]],
-            [self._pick_cup, []],
+            [self._pick_cup, ["water_cup"]],
             [self._goto_locale, ["coffee_pot"]],
             [self._pour_water, ["coffee_pot"]],
             [self._place_cup_left,["coffee_pot"]],
             [self._goto_locale,[object_locale_dict["coffee_cup"]]],
-            [self._pick_cup, []],
+            [self._pick_cup, ["coffee_cup"]],
             [self._goto_locale, ["coffee_pot"]],
             [self._pour_grinds, ["coffee_pot"]],
             [self._place_cup_right,["coffee_pot"]],

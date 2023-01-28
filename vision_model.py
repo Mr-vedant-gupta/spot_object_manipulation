@@ -17,7 +17,7 @@ from sklearn.metrics import silhouette_score
 MODEL_NAME = "handle-model"
 HAND_MODEL = 'object-hand-model'
 SERVER_NAME = "fetch-server"
-CONFIDENCE_THRESHOLD = 0.65
+
 
 class VisionModel:
     image_sources = [
@@ -141,6 +141,13 @@ class VisionModel:
             return best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source
 
     def get_object_and_image(self, image_sources, label = None):
+
+        if label == "noodle_handle":
+            confidence_threshold = 0.35
+        else:
+            confidence_threshold = 0.65
+
+
         for source in image_sources:
             # Build a network compute request for this image source.
             image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
@@ -152,7 +159,7 @@ class VisionModel:
             input_data = network_compute_bridge_pb2.NetworkComputeInputData(
                 image_source_and_service=image_source_and_service,
                 model_name=HAND_MODEL,
-                min_confidence=CONFIDENCE_THRESHOLD,
+                min_confidence=confidence_threshold,
                 rotate_image=network_compute_bridge_pb2.NetworkComputeInputData.ROTATE_IMAGE_ALIGN_HORIZONTAL)
             # Server data: the service name
             server_data = network_compute_bridge_pb2.NetworkComputeServerConfiguration(
