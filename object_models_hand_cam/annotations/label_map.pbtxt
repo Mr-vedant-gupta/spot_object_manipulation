@@ -6,3 +6,11 @@ item {
     id: 2
     name: 'useless_cup'
 }
+item {
+    id: 3
+    name: 'water_cup'
+}
+item {
+    id: 4
+    name: 'noodle_handle'
+}
