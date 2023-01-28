@@ -145,9 +145,17 @@ class GraphNavInterface(object):
             '26': self._execute_plan,
             '27': self._cam_search,
             '28': self._find_where_objects_are,
-            '29': self._generate_aosm_and_plan
+            '29': self._generate_aosm_and_plan,
+            '30': self._open_noodle_door,
 
         }
+    def open_noodle_door(self, *args):
+
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(5,"noodle_handle")
+
+        self.fetch_model.open_noodle_door(image_full, best_obj, best_vision_tform_obj)
+
+        self.carry_pose()
 
     def _generate_aosm_and_plan(self, *args):
         #identify where the fiducials are
@@ -190,8 +198,6 @@ class GraphNavInterface(object):
 
         print(object_locale_dict)
         return(object_locale_dict)
-
-
 
     def _cam_search(self, *args):
         ret_obj = None
@@ -1393,8 +1399,13 @@ class GraphNavInterface(object):
         print("pickle dumped")
 
     def _pick_cup(self, *args):
-        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(
-            5)
+
+        if "coffee_cup" in args[0][0]:
+            label = "coffee_cup"
+        if "water_cup" in args[0][0]:
+            label = "water_cup"
+
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(5,label)
         self.fetch_model.test_cup_pick(image_full, best_obj, best_vision_tform_obj)
         self.carry_pose()
 
@@ -1519,6 +1530,7 @@ class GraphNavInterface(object):
             (27) Search for object with handcam locally
             (28) Find where objects are via vision
             (29) Generate an AOSM and execute a plan
+            (30) Open Noodle door
             (q) Exit.
             """)
 

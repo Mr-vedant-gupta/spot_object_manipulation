@@ -118,9 +118,9 @@ class VisionModel:
         kmeans_f.close()
         self.objects = []
 
-    def detect_objects_hand(self, n_seconds):
-        return self.detect_objects(n_seconds, ["hand_color_image"])
-    def detect_objects(self, n_seconds, image_sources = None):
+    def detect_objects_hand(self, n_seconds, label):
+        return self.detect_objects(n_seconds, ["hand_color_image"], label )
+    def detect_objects(self, n_seconds, image_sources = None, label =None):
         index = 0
         
         t_end = time.time() + n_seconds
@@ -129,7 +129,7 @@ class VisionModel:
             # for l in self.labels:
             if image_sources == None:
                 image_sources = self.image_sources
-            best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(image_sources)
+            best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.get_object_and_image(image_sources, label)
 
             if seed_tform_obj is not None:
 
@@ -140,7 +140,7 @@ class VisionModel:
 
             return best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source
 
-    def get_object_and_image(self, image_sources):
+    def get_object_and_image(self, image_sources, label = None):
         for source in image_sources:
             # Build a network compute request for this image source.
             image_source_and_service = network_compute_bridge_pb2.ImageSourceAndService(
@@ -177,17 +177,16 @@ class VisionModel:
             img = self.get_bounding_box_image(resp)
             image_full = resp.image_response
 
-            #TODO: Move back
-            cv2.imshow("Object", img)
-            cv2.waitKey(15)
             if len(resp.object_in_image) > 0:
                 # Show the image
+                cv2.imshow("Object", img)
+                cv2.waitKey(15)
 
                 for obj in resp.object_in_image:
                     # Get the label
-                    # obj_label = obj.name.split('_label_')[-1]
-                    # if obj_label != label:
-                    #     continue
+                    obj_label = obj.name.split('_label_')[-1]
+                    if obj_label != label and not label == None:
+                        continue
                     conf_msg = wrappers_pb2.FloatValue()
                     obj.additional_properties.Unpack(conf_msg)
                     conf = conf_msg.value

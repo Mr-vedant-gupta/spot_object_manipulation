@@ -51,7 +51,42 @@ class FetchModel:
         # Wait until the robot reports that it is at the goal.
         block_for_trajectory_cmd(self.robot_command_client, cmd_id, timeout_sec=15, verbose=True)
 
+
+    def open_noodle_door(self,image, best_obj, vision_tform_obj):
+
+        self.__grasp_object(image,best_obj, vision_tform_obj)
+
+        # Move the arm to a carry position.
+        print("COFFEE CUP")
+        carry_cmd = RobotCommandBuilder.arm_carry_command()
+        self.robot_command_client.robot_command_async(carry_cmd)
+        command = construct_cabinet_task(-VELOCITY, force_limit=FORCE_LIMIT)
+        command.full_body_command.constrained_manipulation_request.end_time.CopyFrom(
+            self.robot.time_sync.robot_timestamp_from_local_secs(time.time() + 10))
+        self.robot_command_client.robot_command_async(command)
+
+        # Wait for the carry command to finish
+        time.sleep(2)
+        print("Finished opening noodle door")
+
+        # Stow the arm in case it is deployed
+        stow_cmd = RobotCommandBuilder.arm_stow_command()
+        self.robot_command_client.robot_command_async(stow_cmd)
+
+        time.sleep(2)
+        print("Finished stowing arm")
+
     def test_cup_pick(self,image, best_obj, vision_tform_obj):
+        self.__grasp_object(image,best_obj, vision_tform_obj)
+
+        print("COFFEE CUP")
+        carry_cmd = RobotCommandBuilder.arm_carry_command()
+        self.robot_command_client.robot_command_async(carry_cmd)
+
+        time.sleep(2)
+        print("Finished carrying coffee cup.")
+
+    def __grasp_object(self,image, best_obj,vision_tform_obj):
         grasp_completed = False
         while not grasp_completed:
 
@@ -154,16 +189,6 @@ class FetchModel:
             if not grasp_completed:
                 print("Didnt find object")
                 continue
-
-            # Move the arm to a carry position.
-
-
-            print("COFFEE CUP")
-            carry_cmd = RobotCommandBuilder.arm_carry_command()
-            self.robot_command_client.robot_command_async(carry_cmd)
-
-            time.sleep(2)
-            print("Finished carrying coffee cup.")
 
     def run_fetch(self, label, cluster_name):
         # This script assumes the robot is already standing via the tablet.  We'll take over from the
