@@ -9,7 +9,9 @@
 import math
 import os
 import sys
+import copy
 import time
+import random
 from bosdyn.client import math_helpers
 
 import graph_nav_util
@@ -148,8 +150,336 @@ class GraphNavInterface(object):
             '28': self._find_where_objects_are,
             '29': self._generate_aosm_and_plan,
             '30': self._open_noodle_door,
+            '31': self._collect_aosm_data,
 
         }
+
+    def _collect_aosm_data(self, *args):
+        desription_list = [
+            "robot_is_holding",
+            "obj_left_of_coffeepot",
+            "obj_right_of_coffeepot",
+            "obj_on_drawers",
+            "obj_on_table",
+            "obj_on_cupboard",
+            "coffee_in_cup",
+            "water_in_cup",
+            "coffee_in_pot",
+            "water_in_pot",
+            "lid_open",
+            "button_pushed",
+            "coffee_made",
+            "robot_loc"
+        ]
+        obj_idxs = [None, "coffee_cup","water_cup"]
+        location_idxs = ["robot_is_holding","obj_left_of_coffeepot","obj_right_of_coffeepot","obj_on_drawers","obj_on_table","obj_on_cupboard"]
+        locales = list(self._object_fiducials_dict.keys())
+
+        def generate_start_state():
+            start_state = [0]*len(desription_list)
+
+            #First make robot be at a location
+            start_state[13] = random.choice(range(len(locales)))
+            print(f"robot start loc is {locales[start_state[13]]}")
+
+            #First fill in object locations
+            #obj_locs[0] is coffee_cup location, obj_locs[1] is water_cup location
+            obj_locs = random.sample(location_idxs[1:],2)
+            print(f"Coffee cup and water cup are at: {obj_locs}")
+            obj_loc_idx_coffee_cup = location_idxs.index(obj_locs[0])
+            start_state[obj_loc_idx_coffee_cup] = 1
+            obj_loc_idx_water_cup = location_idxs.index(obj_locs[1])
+            start_state[obj_loc_idx_water_cup] = 2
+
+            #Then fill in whether water and coffee are in pot
+            start_state[6] = random.choice([0,1])
+            start_state[7] = random.choice([0, 1])
+            print(f"coffee in cup? {start_state[6]}")
+            print(f"water in cup? {start_state[7]}")
+
+            #Coffee pot status, opposite of cups by definition
+            start_state[8] = int(not start_state[6])
+            start_state[9] = int(not start_state[7])
+
+            #lid always starts open, button always not pushed and coffee not made
+            start_state[10] = 1
+            start_state[11] = 0
+            start_state[12] = 0
+
+            print(f"start state: {start_state}")
+            return(start_state)
+
+
+        actions_to_try = [
+            [self._goto_locale, ["cupboard"]],
+            [self._goto_locale, ["drawers"]],
+            [self._goto_locale, ["coffee_pot"]],
+            [self._goto_locale, ["table"]],
+            [self._pick_cup, ["water_cup"]],
+            [self._pick_cup, ["coffee_cup"]],
+            #[self._pour_grinds, ["coffee_pot"]],
+            #[self._pour_water, ["coffee_pot"]],
+            #[self._place_cup_left,["coffee_pot"]],
+            #[self._place_cup_right,["coffee_pot"]],
+            #[self._close_lid, ["coffee_pot"]],
+            #[self._push_button, ["coffee_pot"]]
+        ]
+
+        self._upload_clusters()
+
+        data_collection = [] #collection of data transitions that were feasible
+        attempt_action = [] #list of states and whether an action was possible or not
+        num_data = 100
+
+        cur_state = generate_start_state()
+        #move robot to start location
+        self._goto_locale([locales[cur_state[13]]])
+
+        for _ in range(num_data):
+            try_action_idx = random.choice(range(len(actions_to_try)))
+            try_action = actions_to_try[try_action_idx]
+            input(f"Going to do action: {try_action}")
+            start_state = copy.deepcopy(cur_state)
+            print(f"start state {start_state}")
+            if try_action[0] == self._goto_locale:
+                #go to locale actions are always valid
+                self._goto_locale([try_action[1][0]])
+                #Robot now at new location
+                cur_state[13] = locales.index(try_action[1][0])
+
+                end_state = cur_state
+
+                #check if end of episode (either for task success or just to reset)
+                resp = input("Should take be reset?")
+                if resp == "y":
+                    done = 1
+                    cur_state = generate_start_state()
+                    # move robot to start location
+                    self._goto_locale([locales[cur_state[13]]])
+                else:
+                    done = 0
+                    cur_state = end_state
+
+                print(f"end state {end_state}")
+
+
+                attempt_action.append([start_state, 1])
+                data_collection.append([start_state, try_action_idx, end_state])
+
+            elif try_action[0] == self._pick_cup: #Trying pick cup action
+                print("considering action pickcup")
+                if start_state[0] == 0 and self._can_pick_cup(try_action[1]): #if robot not holding cup and cup is actually visible, great, try pick up
+                    print("Executng pick up cup action")
+                    self._pick_cup(try_action[1])
+                    #object is no longer at place it was before
+                    for idx, val in enumerate(cur_state[:7]):
+                        if val == obj_idxs.index(try_action[1][0]): #this is where the item was previously, make it no longer there
+                            cur_state[idx] = 0
+                    cur_state[0] = obj_idxs.index(try_action[1][0]) #robot is now holding that cup
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not pick up cup :(")
+                    attempt_action.append([start_state, 0])
+            elif try_action[0] == self._pour_grinds: #Trying to pour grinds
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] == obj_idxs.index("coffee_cup") and start_state[6] == 1: #if robot is at coffeepot, holding coffee grinds, and coffee_cup has grinds
+                    #TODO: execute pour coffee grinds skill for real
+
+                    #After skill execution, coffee grounds is no longer true
+                    cur_state[6] = 0 #no more grounds in coffee cup
+                    cur_state[8] = 1 #coffee grinds in coffee machine!
+
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not pour coffee grinds :(")
+                    attempt_action.append([start_state, 0])
+
+            elif try_action[0] == self._pour_water: #Trying to pour water
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] == obj_idxs.index("water_cup") and start_state[7] == 1: #if robot is at coffeepot, holding water cup, and watercup has water
+                    #TODO: execute water skill
+
+                    #After skill execution, water cup is no longer true
+                    cur_state[7] = 0 #no more water in cup
+                    cur_state[9] = 1 #water in coffee machine!
+
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not pour water :(")
+                    attempt_action.append([start_state, 0])
+            elif try_action[0] == self._place_cup_left: #place cup
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] != 0 and start_state[1] == 0: #if robot is at coffeepot, holding something, and nothing at left spot
+                    #TODO: place object
+
+                    #After skill execution, cup is placed
+                    cur_state[1] = cur_state[0] #whatever was in hand is now at left coffee pot location
+                    cur_state[0] = 0 #not holding anything anymore
+
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not place cup on left side")
+                    attempt_action.append([start_state, 0])
+
+            elif try_action[0] == self._place_cup_right: #place cup
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] != 0 and start_state[2] == 0: #if robot is at coffeepot, holding something, and nothing at right spot
+                    #TODO: place object
+
+                    #After skill execution, cup is placed
+                    cur_state[2] = cur_state[0] #whatever was in hand is now at left coffee pot location
+                    cur_state[0] = 0 #not holding anything anymore
+
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not place cup on right side")
+                    attempt_action.append([start_state, 0])
+
+            elif try_action[0] == self._close_lid: #close lid
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] == 0 and start_state[10] == 1: #if robot is at coffeepot, holding nothing, and lid is open
+                    #TODO: close lid
+
+                    #After skill execution
+                    cur_state[10] = 0 #lid closed now
+
+                    end_state = cur_state
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not close lid")
+                    attempt_action.append([start_state, 0])
+
+            elif try_action[0] == self._push_button: #push button
+                if start_state[13] == locales.index("coffee_pot") and start_state[0] == 0 and start_state[8] == 1 and start_state[9] == 1 and start_state[10] == 0 and start_state[11] == 0 : #if robot is at coffeepot, holding nothing, lid is closed, water and grinds are in coffee pot, button is off
+                    #TODO: push button
+
+                    #After skill execution
+                    cur_state[11] = 1 #button on
+                    cur_state[12] = 1 #coffee made
+
+                    end_state = cur_state
+
+
+                    #check if end of episode (either for task success or just to reset)
+                    resp = input("Should take be reset?")
+                    if resp == "y":
+                        done = 1
+                        cur_state = generate_start_state()
+                        # move robot to start location
+                        self._goto_locale([locales[cur_state[13]]])
+                    else:
+                        done = 0
+                        cur_state = end_state
+
+                    print(f"end state {end_state}")
+
+                    attempt_action.append([start_state, 1])
+                    data_collection.append([start_state, try_action_idx, end_state])
+                else:
+                    print("can not push button")
+                    attempt_action.append([start_state, 0])
+
+
+            else:
+                raise Exception("tried infeasible action, sadness")
+
+        print(f"data collection {data_collection}")
+        print(f"attempt action: {attempt_action}")
+
+
+
+
+
     def _open_noodle_door(self, *args):
 
         best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(5,"noodle_handle")
@@ -165,9 +495,9 @@ class GraphNavInterface(object):
         object_locale_dict = self._find_where_objects_are()
 
         #generate plan based on where objects are at
-        #First we get the water cup (useless_cup), then we get coffee grinds cup
+        #First we get the water cup (water_cup), then we get coffee grinds cup
         plan = [
-            [self._goto_locale, [object_locale_dict["useless_cup"]]],
+            [self._goto_locale, [object_locale_dict["water_cup"]]],
             [self._pick_cup, ["water_cup"]],
             [self._goto_locale, ["coffee_pot"]],
             [self._pour_water, ["coffee_pot"]],
@@ -1397,6 +1727,17 @@ class GraphNavInterface(object):
         pickle.dump(all_fiducial_to_pose_dict, open("fiducial_info.pkl","wb"))
         print("pickle dumped")
 
+
+    def _can_pick_cup(self, *args):
+
+        if "coffee_cup" in args[0][0]:
+            label = "coffee_cup"
+        if "water_cup" in args[0][0]:
+            label = "water_cup"
+
+        best_obj, best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source = self.vision_model.detect_objects_hand(5,label)
+        return best_obj_label != None
+
     def _pick_cup(self, *args):
 
         if "coffee_cup" in args[0][0]:
@@ -1530,6 +1871,7 @@ class GraphNavInterface(object):
             (28) Find where objects are via vision
             (29) Generate an AOSM and execute a plan
             (30) Open Noodle door
+            (31) Collect data for AOSM experiments
             (q) Exit.
             """)
 
