@@ -44,12 +44,15 @@ from collections import defaultdict
 
 import numpy as np
 
-#HOSTNAME = "138.16.161.22"
-HOSTNAME = "192.168.80.3"
+# HOSTNAME = "138.16.161.22"         #02
+HOSTNAME = "192.168.80.3"           #12
 # UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
 #UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
-#UPLOAD_FILEPATH = "./navigation/maps/cit121_115_02/downloaded_graph"
-UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
+# UPLOAD_FILEPATH = "./navigation/maps/cit121_115_02/downloaded_graph"
+#UPLOAD_FILEPATH = "./navigation/maps/cit121_115_12/downloaded_graph"
+# UPLOAD_FILEPATH = "./navigation/maps/cit121_12/downloaded_graph"
+UPLOAD_FILEPATH = "./navigation/maps/max12/downloaded_graph"
+
 # UPLOAD_FILEPATH = "/home/vedantgupta/drawer/navigation/maps/downloaded_graph"
 NAVIGATION_TO_OBJECT_ACCEPTABLE_DISTANCE = 3.0
 
@@ -107,7 +110,7 @@ class GraphNavInterface(object):
                                    'pour_water': {'coffee_pot': (0, 0, 0.8)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
                                    'go_to': {'coffee_pot': (0, 0, 0.81),
-                                             'cupboard': (0, 0, 1.5),
+                                             'cupboard': (0, 0, 1.1),
                                              'table': (0, 0, 0.95),
                                              'drawers': (0, 0, 0.95),
                                              }
@@ -151,8 +154,16 @@ class GraphNavInterface(object):
             '29': self._generate_aosm_and_plan,
             '30': self._open_noodle_door,
             '31': self._collect_aosm_data,
+            '32': self._run_LOMDP
 
         }
+
+
+    def _run_LOMDP(self, *args):
+        sys.path.append('../Locality')
+        from coffeeLomdp import runLOMDP_robot
+
+        runLOMDP_robot(self)
 
     def _collect_aosm_data(self, *args):
         desription_list = [
@@ -1708,7 +1719,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:20]:
+            for waypoint in waypoints[:35]:
                 if waypoint != None:
                     self._navigate_to([waypoint])
 
@@ -1872,6 +1883,7 @@ class GraphNavInterface(object):
             (29) Generate an AOSM and execute a plan
             (30) Open Noodle door
             (31) Collect data for AOSM experiments
+            (32) run LOMDP
             (q) Exit.
             """)
 
