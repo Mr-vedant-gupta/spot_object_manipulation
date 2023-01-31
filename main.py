@@ -605,10 +605,10 @@ class GraphNavInterface(object):
         if location not in self._skill_offset_dict['go_to'].keys():
             print(f"{location} not valid")
             return
-        print(f"location is {location}")
-        print(self._object_fiducials_dict[location])
-        print(self._skill_offset_dict['go_to'][location])
-        print("Going to object")
+        print(f"going to {location}")
+        # print(self._object_fiducials_dict[location])
+        # print(self._skill_offset_dict['go_to'][location])
+        # print("Going to object")
         self._go_to_fiducial_global(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
 
 
@@ -794,13 +794,13 @@ class GraphNavInterface(object):
         # print(seq_1_poses_body_frame)
 
         # make the shaking motion at the second pose
-        print("seq 2")
+        # print("seq 2")
         pouring_quat_a = math_helpers.Quat.from_roll(-1.5)
         pouring_quat_b = math_helpers.Quat.from_roll(-1.57)
         shake_pose = cmd_poses_fiducial_frame[1][0]
-        print(f"shake pose fid frame{shake_pose}")
+        # print(f"shake pose fid frame{shake_pose}")
         shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
-        print(f"shake pose body frame{shake_pose_body_frame}")
+        # print(f"shake pose body frame{shake_pose_body_frame}")
         seq_2_poses_body_frame = [
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 3],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, 3.4],
@@ -810,7 +810,7 @@ class GraphNavInterface(object):
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
 
-        print("seq 3")
+        # print("seq 3")
         seq_3_poses_body_frame = []
         for pose in cmd_poses_fiducial_frame[2]:  # for each pose in first move sequence
             cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
@@ -844,16 +844,16 @@ class GraphNavInterface(object):
 
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
             #[0.5, 0, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.01, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.01, -0.13, looking_negative_z, 3.0],
+            [0.7, -0.00, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.00, -0.13, looking_negative_z, 3.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.01, -0.13, looking_negative_z, 1.0],
-                [0.7, -0.01, -0.13, looking_negative_z, 1.0]
+                [0.7, -0.00, -0.13, looking_negative_z, 1.0],
+                [0.7, -0.00, -0.13, looking_negative_z, 1.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.01, -0.13, looking_negative_z, 2.0],
-                [0.7, -0.01, 0.1, looking_negative_z, 3.0],
+                [0.7, -0.00, -0.13, looking_negative_z, 2.0],
+                [0.7, -0.00, 0.1, looking_negative_z, 3.0],
                 #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
 
@@ -876,13 +876,13 @@ class GraphNavInterface(object):
         # print(seq_1_poses_body_frame)
 
         # make the shaking motion at the second pose
-        print("seq 2")
+        # print("seq 2")
         pouring_quat_a = math_helpers.Quat.from_roll(-1.34)
         pouring_quat_b = math_helpers.Quat.from_roll(-1.57)
         shake_pose = cmd_poses_fiducial_frame[1][0]
-        print(f"shake pose fid frame{shake_pose}")
+        # print(f"shake pose fid frame{shake_pose}")
         shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
-        print(f"shake pose body frame{shake_pose_body_frame}")
+        # print(f"shake pose body frame{shake_pose_body_frame}")
         seq_2_poses_body_frame = [
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .2],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
@@ -892,7 +892,7 @@ class GraphNavInterface(object):
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
 
-        print("seq 3")
+        # print("seq 3")
         seq_3_poses_body_frame = []
         for pose in cmd_poses_fiducial_frame[2]:  # for each pose in first move sequence
             cmd_pose_body_frame = (get_body_tform_goal_fid(pose[:-1]), pose[-1])
@@ -917,8 +917,8 @@ class GraphNavInterface(object):
         # location = args[0][0]
         location = 'coffee_pot'
         print(f"location is {location}")
-        print(self._object_fiducials_dict[location])
-        print(self._skill_offset_dict['close_lid'][location])
+        # print(self._object_fiducials_dict[location])
+        # print(self._skill_offset_dict['close_lid'][location])
         self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['close_lid'][location])
         close_lid(self._robot, self._robot_command_client)
         self.stow_arm()
@@ -961,6 +961,7 @@ class GraphNavInterface(object):
 
     def _go_to_fiducial_global(self, fid_number, offsets):
         x, y, z = offsets
+        print('go_to_fid_global:')
         print(fid_number, offsets)
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
@@ -970,7 +971,7 @@ class GraphNavInterface(object):
 
         seed_tform_vision = seed_tform_body * body_tform_vision
 
-        print("Seed_tform_body:", seed_tform_body)
+        # print("Seed_tform_body:", seed_tform_body)
         world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
         # Get all fiducial objects (an object of a specific type).
         # request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
@@ -981,8 +982,8 @@ class GraphNavInterface(object):
         fiducial_tform_goto = SE3Pose(x, y, z, Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
 
-        print("Seed tform fiducial", seed_tform_fiducial)
-        print("Seed tform goto:", seed_tform_goto)
+        # print("Seed tform fiducial", seed_tform_fiducial)
+        # print("Seed tform goto:", seed_tform_goto)
 
         self._navigate_to_anchor(
             [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
@@ -991,14 +992,14 @@ class GraphNavInterface(object):
         x, y, z = offsets
         localization_state = self._graph_nav_client.get_localization_state()
         seed_tform_body = SE3Pose.from_obj(localization_state.localization.seed_tform_body)
-        print(f"seed_tform_body{seed_tform_body}")
+        # print(f"seed_tform_body{seed_tform_body}")
 
         vision_tform_body = bosdyn.client.frame_helpers.get_vision_tform_body(self._robot.get_frame_tree_snapshot())
         body_tform_vision = vision_tform_body.inverse()
 
         seed_tform_vision = seed_tform_body * body_tform_vision
 
-        print("Seed_tform_body:", seed_tform_body)
+        # print("Seed_tform_body:", seed_tform_body)
         world_object_client = self._robot.ensure_client(WorldObjectClient.default_service_name)
         # Get all fiducial objects (an object of a specific type).
         request_fiducials = [world_object_pb2.WORLD_OBJECT_APRILTAG]
@@ -1022,8 +1023,8 @@ class GraphNavInterface(object):
         fiducial_tform_goto = SE3Pose(x, y, z, Quat())
         seed_tform_goto = seed_tform_fiducial * fiducial_tform_goto
 
-        print("Seed tform fiducial", seed_tform_fiducial)
-        print("Seed tform goto:", seed_tform_goto)
+        # print("Seed tform fiducial", seed_tform_fiducial)
+        # print("Seed tform goto:", seed_tform_goto)
 
         self._navigate_to_anchor(
             [seed_tform_goto.position.x, seed_tform_goto.position.y, seed_tform_goto.rotation.to_yaw()])
@@ -1067,7 +1068,7 @@ class GraphNavInterface(object):
 
         seed_T_goal = self.vision_model.clusters[args[0][0]][0]  # the list will only have one element
         # seed_T_goal = SE3Pose(seed_T_goal[0],seed_T_goal[1],0,Quat())
-        print(seed_T_goal)
+        # print(seed_T_goal)
 
         nav_to_cmd_id = None
 
@@ -1075,14 +1076,14 @@ class GraphNavInterface(object):
 
         # Navigate to the destination.
         for theta in thetas:
-            print("Angle: " + str(theta))
+            # print("Angle: " + str(theta))
 
             x = (1.0 * math.cos(math.radians(theta))) - (0 * math.sin(math.radians(theta)))
             y = (1.0 * math.sin(math.radians(theta))) + (0 * math.cos(math.radians(theta)))
             goal_tform_goto = SE3Pose(x, y, 0, Quat())
             # print(goal_tform_goto)
             seed_tform_goto = seed_T_goal * goal_tform_goto
-            print(seed_tform_goto)
+            # print(seed_tform_goto)
 
             # Issue the navigation command about twice a second such that it is easy to terminate the
             # navigation command (with estop or killing the program).
@@ -1719,7 +1720,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:35]:
+            for waypoint in waypoints[:15]:
                 if waypoint != None:
                     self._navigate_to([waypoint])
 
