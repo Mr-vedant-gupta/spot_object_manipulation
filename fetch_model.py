@@ -109,9 +109,14 @@ class FetchModel:
             # The ML result is a bounding box.  Find the center.
             (center_px_x,
              center_px_y) = self.vision_model.find_center_px(best_obj.image_properties.coordinates)
-
+            print('center pix')
+            print(center_px_x)
+            print(type(center_px_x))
             # Request Pick Up on that pixel.
             pick_vec = geometry_pb2.Vec2(x=center_px_x, y=center_px_y)
+
+            # pick_vec = geometry_pb2.Vec2(x=center_px_x - 15, y=center_px_y)
+            print('building grasp command')
             grasp = manipulation_api_pb2.PickObjectInImage(
                 pixel_xy=pick_vec,
                 transforms_snapshot_for_camera=image.shot.transforms_snapshot,
@@ -121,7 +126,7 @@ class FetchModel:
             # We can specify where in the gripper we want to grasp. About halfway is generally good for
             # small objects like this. For a bigger object like a shoe, 0 is better (use the entire
             # gripper)
-            grasp.grasp_params.grasp_palm_to_fingertip = 0.2
+            grasp.grasp_params.grasp_palm_to_fingertip = 0.13
 
             # Tell the grasping system that we want a top-down grasp.
 
@@ -142,7 +147,7 @@ class FetchModel:
                 axis_to_align_with_ewrt_vision)
 
             # We'll take anything within about 15 degrees for top-down or horizontal grasps.
-            constraint.vector_alignment_with_tolerance.threshold_radians = 0.25
+            constraint.vector_alignment_with_tolerance.threshold_radians = 0.10
 
             # Specify the frame we're using.
             grasp.grasp_params.grasp_params_frame_name = frame_helpers.VISION_FRAME_NAME

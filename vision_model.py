@@ -118,7 +118,7 @@ class VisionModel:
         kmeans_f.close()
         self.objects = []
 
-    def detect_objects_hand(self, n_seconds, label):
+    def detect_objects_hand(self, n_seconds, label=None):
         return self.detect_objects(n_seconds, ["hand_color_image"], label )
     def detect_objects(self, n_seconds, image_sources = None, label =None):
         index = 0
@@ -126,6 +126,7 @@ class VisionModel:
         t_end = time.time() + n_seconds
 
         while time.time() < t_end:
+
             # for l in self.labels:
             if image_sources == None:
                 image_sources = self.image_sources
@@ -137,6 +138,7 @@ class VisionModel:
 
                 self.objects.append((best_obj_label,seed_tform_obj))
                 index += 1
+            time.sleep(0.1)
 
             return best_obj,best_obj_label, image_full, best_vision_tform_obj, seed_tform_obj, source
 
@@ -216,15 +218,15 @@ class VisionModel:
                         if seed_tform_body == None:
                             print("Forgot to upload map")
                         elif vision_tform_obj is not None:
-                            print("seed_tform_body")
-                            print(type(seed_tform_body))
-                            print("body_tform_vision")
-                            print(type(body_tform_vision))
-                            print("vision_tform_obj")
-                            print(type(vision_tform_obj))
+                            # print("seed_tform_body")
+                            # print(type(seed_tform_body))
+                            # print("body_tform_vision")
+                            # print(type(body_tform_vision))
+                            # print("vision_tform_obj")
+                            # print(type(vision_tform_obj))
 
                             seed_tform_obj = seed_tform_body * body_tform_vision * vision_tform_obj
-                            print("seed tfrom obj: ", seed_tform_obj)
+                            # print("seed tfrom obj: ", seed_tform_obj)
 
                     except bosdyn.client.frame_helpers.ValidateFrameTreeError:
                         # No depth data available.

@@ -29,10 +29,10 @@ def look_around(robot, command_client, idx):
     hooking_quat2 = math_helpers.Quat.from_pitch(0.8)
 
     cmd_poses = [[
-            [0.8, 0, 0.5, hooking_quat1, 3.0],
+            [0.35, 0, 0.5, hooking_quat1, 3.0],
     ],
         [
-            [0.8, 0, 0.5, hooking_quat2, 3.0],
+            [0.35, 0, 0.5, hooking_quat2, 3.0],
         ],
     ]
 
@@ -115,14 +115,14 @@ def execute_trajectory_from_poses_oo(robot, command_client, cmd_timing_tuples, g
     start = time.time()
     while time.time() - start < timeout:
         feedback_resp = command_client.robot_command_feedback(cmd_id)
-        print('Distance to final point: ' + '{:.2f} meters'.format(
-            feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
-            arm_cartesian_feedback.measured_pos_distance_to_goal) + ', {:.2f} radians'.format(
-                feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
-                arm_cartesian_feedback.measured_rot_distance_to_goal))
+        # print('Distance to final point: ' + '{:.2f} meters'.format(
+        #     feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
+        #     arm_cartesian_feedback.measured_pos_distance_to_goal) + ', {:.2f} radians'.format(
+        #         feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
+        #         arm_cartesian_feedback.measured_rot_distance_to_goal))
 
         if feedback_resp.feedback.synchronized_feedback.arm_command_feedback.arm_cartesian_feedback.status == arm_command_pb2.ArmCartesianCommand.Feedback.STATUS_TRAJECTORY_COMPLETE:
-            print('Move complete.')
+            # print('Move complete.')
             break
         time.sleep(0.1)
 
@@ -206,13 +206,13 @@ def execute_trajectory_from_poses(robot, command_client, cmd_poses, gripper_amou
     start = time.time()
     while time.time() - start < timeout:
         feedback_resp = command_client.robot_command_feedback(cmd_id)
-        print('Distance to final point: ' + '{:.2f} meters'.format(
-            feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
-            arm_cartesian_feedback.measured_pos_distance_to_goal) + ', {:.2f} radians'.format(
-                feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
-                arm_cartesian_feedback.measured_rot_distance_to_goal))
+        # print('Distance to final point: ' + '{:.2f} meters'.format(
+        #     feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
+        #     arm_cartesian_feedback.measured_pos_distance_to_goal) + ', {:.2f} radians'.format(
+        #         feedback_resp.feedback.synchronized_feedback.arm_command_feedback.
+        #         arm_cartesian_feedback.measured_rot_distance_to_goal))
 
         if feedback_resp.feedback.synchronized_feedback.arm_command_feedback.arm_cartesian_feedback.status == arm_command_pb2.ArmCartesianCommand.Feedback.STATUS_TRAJECTORY_COMPLETE:
-            print('Move complete.')
+            # print('Move complete.')
             break
         time.sleep(0.1)

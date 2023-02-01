@@ -109,10 +109,10 @@ class GraphNavInterface(object):
                                    'push_button': {'coffee_pot': (0, 0, 0.8)},
                                    'pour_water': {'coffee_pot': (0, 0, 0.8)},
                                    'close_lid': {'coffee_pot': (0, -0.6, 0.1)},
-                                   'go_to': {'coffee_pot': (0, 0, 0.81),
-                                             'cupboard': (0, 0, 1.1),
-                                             'table': (0, 0, 0.95),
-                                             'drawers': (0, 0, 0.95),
+                                   'go_to': {'coffee_pot': (0, 0, 0.7),
+                                             'cupboard': (0, 0, .9),
+                                             'table': (0, 0, 0.8),
+                                             'drawers': (0, 0, 0.8),
                                              }
                                    }
 
@@ -611,6 +611,17 @@ class GraphNavInterface(object):
         # print("Going to object")
         self._go_to_fiducial_global(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
 
+    def _refine_locale(self, *args):
+        location = args[0][0]
+        if location not in self._skill_offset_dict['go_to'].keys():
+            print(f"{location} not valid")
+            return
+        print(f"refining {location}")
+        # print(self._object_fiducials_dict[location])
+        # print(self._skill_offset_dict['go_to'][location])
+        # print("Going to object")
+        self._go_to_fiducial(self._object_fiducials_dict[location], self._skill_offset_dict['go_to'][location])
+
 
     def _push_button(self, *args):
         # location = args[0][0]
@@ -627,13 +638,13 @@ class GraphNavInterface(object):
         # In the fiducial frame
         cmd_poses_fiducial_frame = [[
             [0.25, -0.09, 0.1, looking_negative_z, 3.0],
-            [0.25, -0.09, -0.05, looking_negative_z, 6.0]
+            [0.25, -0.1, -0.05, looking_negative_z, 6.0]
         ],
             [
-                [0.25, -0.09, -0.05, looking_negative_z, 1.0]
+                [0.25, -0.1, -0.05, looking_negative_z, 1.0]
             ],
             [
-                [0.25, -0.09, -0.05, looking_negative_z, 3.0],
+                [0.25, -0.1, -0.05, looking_negative_z, 3.0],
                 [0.25, -0.2, 0.07, looking_negative_z, 5.0]
             ]
         ]
@@ -764,15 +775,15 @@ class GraphNavInterface(object):
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
             #[0.5, 0, 0.1, looking_negative_z, 2.0],
             [0.7, -0.05, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.05, -0.26, looking_negative_z, 3.0],
+            [0.7, -0.08, -0.24, looking_negative_z, 3.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.05, -0.26, looking_negative_z, 1.0],
-                [0.7, -0.05, -0.26, looking_negative_z, 2.0]
+                [0.7, -0.08, -0.24, looking_negative_z, 1.0],
+                [0.7, -0.08, -0.24, looking_negative_z, 2.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.05, -0.26, looking_negative_z, 2.0],
-                [0.7, -0.05, 0.1, looking_negative_z, 3.0],
+                [0.7, -0.08, -0.24, looking_negative_z, 2.0],
+                [0.7, -0.08, 0.1, looking_negative_z, 3.0],
                 #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
         ]
@@ -844,16 +855,16 @@ class GraphNavInterface(object):
 
         cmd_poses_fiducial_frame = [[  # sequence 1, holding over machine
             #[0.5, 0, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.00, 0.1, looking_negative_z, 2.0],
-            [0.7, -0.00, -0.13, looking_negative_z, 3.0],
+            [0.7, -0.01, 0.1, looking_negative_z, 2.0],
+            [0.7, -0.04, -0.11, looking_negative_z, 3.0],
         ],
             [  # sequence 2, shaking
-                [0.7, -0.00, -0.13, looking_negative_z, 1.0],
-                [0.7, -0.00, -0.13, looking_negative_z, 1.0]
+                [0.7, -0.04, -0.11, looking_negative_z, 1.0],
+                [0.7, -0.04, -0.11, looking_negative_z, 1.0]
             ],
             [  # sequence 3, retracting
-                [0.7, -0.00, -0.13, looking_negative_z, 2.0],
-                [0.7, -0.00, 0.1, looking_negative_z, 3.0],
+                [0.7, -0.04, -0.11, looking_negative_z, 2.0],
+                [0.7, -0.04, 0.1, looking_negative_z, 3.0],
                 #[0.5, 0, 0.1, looking_negative_z, 6.0],
             ]
 
@@ -877,17 +888,17 @@ class GraphNavInterface(object):
 
         # make the shaking motion at the second pose
         # print("seq 2")
-        pouring_quat_a = math_helpers.Quat.from_roll(-1.34)
-        pouring_quat_b = math_helpers.Quat.from_roll(-1.57)
+        pouring_quat_a = math_helpers.Quat.from_roll(-1.1)
+        pouring_quat_b = math_helpers.Quat.from_roll(-1.2)
         shake_pose = cmd_poses_fiducial_frame[1][0]
         # print(f"shake pose fid frame{shake_pose}")
         shake_pose_body_frame = (get_body_tform_goal_fid(shake_pose[:-1]), shake_pose[-1])
         # print(f"shake pose body frame{shake_pose_body_frame}")
         seq_2_poses_body_frame = [
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .2],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .4],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, .6],
-            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, .8],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 3],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, 3.4],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 3.6],
+            [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_b, 3.8],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, pouring_quat_a, 5],
             [shake_pose_body_frame[0].position.x, shake_pose_body_frame[0].position.y, shake_pose_body_frame[0].position.z, holding_quat, 6],
         ]
